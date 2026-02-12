@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -70,7 +70,7 @@
     "tsx": "^4.7.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
