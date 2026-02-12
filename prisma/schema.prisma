@@ -1,0 +1,494 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Connection pooling URL for regular queries
+  directUrl = env("DIRECT_URL") // Direct connection URL for migrations
+}
+
+// User model for both Clients and Stewards
+// Note: ID uses UUID to match Supabase Auth user IDs
+model User {
+  id                 String   @id // UUID from Supabase Auth, no default
+  name               String
+  email              String?  @unique
+  password           String? // Hashed password (Supabase handles this, but field required by schema)
+  phone              String?  @unique
+  phoneVerified      DateTime?
+  address            String?
+  city               String?
+  image              String?
+  role               Role     @default(CLIENT)
+  isIdentityVerified Boolean  @default(false)
+  trustedContact     Json? // Contact info for emergencies
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // NextAuth.js Fields
+  emailVerified DateTime?
+  accounts      Account[]
+  sessions      Session[]
+
+  // Relations
+  stewardProfile  StewardProfile?
+  tasksAsClient   Task[]          @relation("ClientTasks")
+  tasksAsSteward  Task[]          @relation("StewardTasks")
+  sentMessages    ChatMessage[]   @relation("SentMessages")
+  disputes        Dispute[]
+
+  reviewsGiven    Review[]        @relation("Reviewer")
+  reviewsReceived Review[]        @relation("Reviewee")
+  notifications   Notification[]  @relation("UserNotifications")
+  securityEvents  SecurityEvent[]
+  transactionsAsClient  Transaction[] @relation("TransactionClient")
+  transactionsAsSteward Transaction[] @relation("TransactionSteward")
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type      String   // e.g., "OTP_FLOOD", "LOGIN_FAILED", "BOOKING_SPAM"
+  ipAddress String?
+  severity  Severity @default(LOW)
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([ipAddress])
+  @@index([type])
+  @@index([severity])
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Role {
+  CLIENT
+  STEWARD
+  ADMIN
+}
+
+enum StewardStatus {
+  APPLIED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Steward Profile (Extension of User)
+model StewardProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            StewardStatus @default(APPLIED)
+  bio               String?
+  skills            String[]
+  languages         String[]
+  yearsOfExperience Int      @default(0)
+
+  // Verification Documents
+  verificationDocumentType  String? // "NATIONAL_ID" or "PASSPORT"
+  verificationDocumentFront String? // URL to front image or passport page
+  verificationDocumentBack  String? // URL to back image (for National ID)
+  recommendationLetter      String? // URL to recommendation letter
+
+  rating                Float  @default(0)
+  completedTasks        Int    @default(0)
+  acceptanceRate        Float  @default(100)
+  backgroundCheckStatus String @default("PENDING") // PENDING, CLEARED, REJECTED
+
+  // Admin Review Fields
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  approvedMetadata Json?
+
+  // Location data (Simulated PostGIS Point for now, can be raw lat/lng or use an extension)
+  latitude      Float?
+  longitude     Float?
+  serviceRadius Int    @default(10) // in km
+
+  // Relations
+  services     ServiceOffering[]
+  availability AvailabilitySlot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// Service Offering (What a steward offers)
+model ServiceOffering {
+  id          String         @id @default(cuid())
+  stewardId   String
+  steward     StewardProfile @relation(fields: [stewardId], references: [id], onDelete: Cascade)
+  category    String // e.g., "Cleaning", "Plumbing"
+  title       String
+  description String?
+  price       Float
+  currency    String         @default("UGX")
+  duration    Int            @default(60) // in minutes
+  images      String[]
+  pricingType PricingType    @default(HOURLY)
+
+  // Pricing rules (PRD 6.5)
+  urgencyMultiplier Float @default(1.0) // Multiplier for urgent tasks (e.g., 1.5 = 50% increase)
+  weekendMultiplier Float @default(1.0) // Multiplier for weekend tasks (e.g., 1.2 = 20% increase)
+  nightMultiplier   Float @default(1.0) // Multiplier for night/after-hours tasks (e.g., 1.3 = 30% increase)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stewardId])
+  @@index([category])
+  @@index([price])
+  @@index([createdAt])
+}
+
+enum PricingType {
+  HOURLY
+  FLAT
+}
+
+// Availability Slots
+model AvailabilitySlot {
+  id           String         @id @default(cuid())
+  stewardId    String
+  steward      StewardProfile @relation(fields: [stewardId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int // 0-6 (Sun-Sat)
+  startTime    String // "09:00"
+  endTime      String // "17:00"
+  isRecurring  Boolean        @default(true)
+  specificDate DateTime? // If not recurring
+}
+
+// Task / Booking
+model Task {
+  id        String  @id @default(cuid())
+  clientId  String
+  client    User    @relation("ClientTasks", fields: [clientId], references: [id])
+  stewardId String? // Optional for broadcast booking (FR-10)
+  steward   User?   @relation("StewardTasks", fields: [stewardId], references: [id])
+
+  status      TaskStatus @default(OPEN)
+  category    String
+  description String?
+  address     String
+  latitude    Float?
+  longitude   Float?
+
+  agreedPrice Float
+  currency    String      @default("UGX")
+  pricingType PricingType
+
+  scheduledStart DateTime
+  scheduledEnd   DateTime?
+  actualStart    DateTime?
+  actualEnd      DateTime?
+
+  // Task expiry (FR-11)
+  expiresAt DateTime? // Task expires if not accepted by this time
+  isExpired Boolean   @default(false)
+
+  // Booking type (FR-10)
+  bookingType BookingType @default(DIRECT) // DIRECT or BROADCAST
+
+  // Pricing adjustments (PRD 6.5)
+  basePrice      Float? // Original price before pricing rules
+  urgencyApplied Boolean @default(false) // Whether urgency multiplier was applied
+  weekendApplied Boolean @default(false) // Whether weekend multiplier was applied
+  nightApplied   Boolean @default(false) // Whether night multiplier was applied
+
+  // Discount tracking (PRD 6.5)
+  promoCodeId    String? // Promo code used (if any)
+  promoCode      PromoCode? @relation(fields: [promoCodeId], references: [id])
+  discountAmount Float? // Discount amount applied (fixed or calculated from percentage)
+  discountType   DiscountType? // PERCENTAGE or FIXED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  messages     ChatMessage[]
+  dispute      Dispute?
+  reviews      Review[]
+  milestones   PaymentMilestone[] // For partial payments (PRD 6.6)
+  metadata     Json?
+
+  @@index([status])
+  @@index([stewardId])
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+enum TaskStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+  DISPUTED
+  EXPIRED
+  ADMIN_FROZEN
+  ADMIN_CANCELLED
+}
+
+enum BookingType {
+  DIRECT // Client books specific steward
+  BROADCAST // Client broadcasts to multiple stewards
+}
+
+// Financial Transaction
+model Transaction {
+  id                    String            @id @default(cuid())
+  taskId                String
+  task                  Task              @relation(fields: [taskId], references: [id])
+  clientId              String?
+  client                User?             @relation("TransactionClient", fields: [clientId], references: [id], onDelete: Cascade)
+  stewardId             String?
+  steward               User?             @relation("TransactionSteward", fields: [stewardId], references: [id], onDelete: SetNull)
+  amount                Float
+  platformFee           Float
+  type                  TransactionType
+  status                TransactionStatus @default(PENDING)
+  providerTransactionId String? // External ID from Payment Provider (e.g., Flutterwave)
+  paymentMethod         String? // e.g., "card", "mobile_money", "bank_transfer"
+  metadata              Json? // Store additional provider response data
+  milestoneId           String? // For partial payments (PRD 6.6)
+  milestone             PaymentMilestone? @relation(fields: [milestoneId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([stewardId])
+  @@index([clientId])
+}
+
+// System-wide configuration flags
+model SystemConfig {
+  id                       String   @id @default(cuid())
+  bookingsEnabled          Boolean  @default(true)
+  escrowAutoReleaseEnabled Boolean  @default(true)
+  stewardAcceptEnabled     Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// Payment Milestones for long tasks (PRD 6.6)
+model PaymentMilestone {
+  id          String          @id @default(cuid())
+  taskId      String
+  task        Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  name        String // e.g., "Phase 1", "Milestone 1"
+  description String? // Description of what this milestone represents
+  amount      Float // Amount for this milestone
+  percentage  Float? // Percentage of total task price (optional)
+  order       Int // Order of milestone (1, 2, 3, etc.)
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime? // When this milestone is due
+  completedAt DateTime? // When this milestone was completed/paid
+
+  transactions Transaction[] // Transactions for this milestone
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum MilestoneStatus {
+  PENDING // Not yet paid
+  IN_PROGRESS // Work started but not completed
+  COMPLETED // Milestone completed and paid
+  CANCELLED // Milestone cancelled
+}
+
+enum TransactionType {
+  CHARGE
+  PAYOUT
+  REFUND
+  TIP
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  INITIATED
+  HELD
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+// Chat Message
+model ChatMessage {
+  id          String    @id @default(cuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id])
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  content     String
+  contentType String    @default("TEXT") // TEXT, IMAGE, LOCATION
+  readAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// Dispute
+model Dispute {
+  id         String        @id @default(cuid())
+  taskId     String        @unique
+  task       Task          @relation(fields: [taskId], references: [id])
+  openerId   String
+  opener     User          @relation(fields: [openerId], references: [id])
+  reason     String
+  status     DisputeStatus @default(OPEN)
+  resolution String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+}
+
+// Promo Code (PRD 6.5)
+model PromoCode {
+  id          String       @id @default(cuid())
+  code        String       @unique // Unique promo code (e.g., "SAVE20")
+  description String? // Description of the promo code
+  discountType DiscountType // PERCENTAGE or FIXED
+  discountValue Float // Percentage (0-100) or fixed amount
+  currency    String? // Currency for fixed discounts (optional, defaults to UGX)
+  minAmount   Float? // Minimum order amount to use this code
+  maxDiscount Float? // Maximum discount amount (for percentage discounts)
+  usageLimit  Int? // Maximum number of times this code can be used (null = unlimited)
+  usedCount   Int   @default(0) // Number of times this code has been used
+  validFrom   DateTime // Start date
+  validUntil  DateTime // End date
+  isActive    Boolean @default(true) // Can be deactivated without deleting
+
+  // Relations
+  tasks Task[] // Tasks that used this promo code
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum DiscountType {
+  PERCENTAGE // Percentage discount (e.g., 20% off)
+  FIXED // Fixed amount discount (e.g., 5000 UGX off)
+}
+
+// Notification
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  data      Json? // Additional data (taskId, transactionId, etc.)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED // Steward assigned to task
+  TASK_ACCEPTED // Task accepted by steward
+  TASK_STARTED // Task started by steward
+  TASK_COMPLETED // Task completed by steward
+  TASK_CONFIRMED // Task confirmed by client
+  TASK_CANCELLED // Task cancelled
+  TASK_EXPIRED // Task expired
+  PAYMENT_RECEIVED // Payment received
+  PAYMENT_RELEASED // Payment released to steward
+  WITHDRAWAL_COMPLETED // Withdrawal completed
+  WITHDRAWAL_FAILED // Withdrawal failed
+  REVIEW_RECEIVED // Review received
+  DISPUTE_OPENED // Dispute opened
+  DISPUTE_RESOLVED // Dispute resolved
+  BROADCAST_TASK // New broadcast task available (for stewards)
+  MESSAGE_RECEIVED // New message (optional, since we have chat notifications)
+}
+
+// Review
+model Review {
+  id         String  @id @default(cuid())
+  taskId     String
+  task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewerId String // User who wrote the review
+  reviewer   User    @relation("Reviewer", fields: [reviewerId], references: [id])
+  revieweeId String // User being reviewed (steward or client)
+  reviewee   User    @relation("Reviewee", fields: [revieweeId], references: [id])
+  rating     Int // 1-5 stars
+  comment    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([taskId, reviewerId]) // One review per reviewer per task
+  @@index([revieweeId]) // For quick lookup of reviews for a user
+}
+

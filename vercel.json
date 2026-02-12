@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/tasks/auto-complete",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/tasks/expire",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+
