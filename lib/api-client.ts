@@ -3,9 +3,17 @@ import { Booking } from '@/types/booking'
 import { User } from '@/types/user'
 import { STEP_UP_EVENT } from '@/lib/auth/step-up'
 
-const API_BASE_URL = typeof window === 'undefined' 
-  ? (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000') + '/api'
-  : '/api'
+const API_BASE_URL = (() => {
+  if (typeof window !== 'undefined') {
+    return '/api'
+  }
+  const vercelUrl = process.env.VERCEL_URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const base =
+    appUrl ||
+    (vercelUrl ? `https://${vercelUrl}` : 'http://localhost:3000')
+  return `${base}/api`
+})()
 
 export type ApiResponse<T> = {
   success: boolean

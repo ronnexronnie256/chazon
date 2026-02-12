@@ -32,12 +32,19 @@ export default async function HomePage() {
   }
 
   // Get accurate service counts from database grouped by category
-  const serviceCounts = await prisma.serviceOffering.groupBy({
-    by: ['category'],
-    _count: {
-      id: true,
-    },
-  })
+  let serviceCounts: any[] = []
+  try {
+    const sc = await prisma.serviceOffering.groupBy({
+      by: ['category'],
+      _count: {
+        id: true,
+      },
+    })
+    serviceCounts = sc
+  } catch (err) {
+    console.error('Failed to query service counts from database:', err)
+    serviceCounts = []
+  }
 
   // Helper function to normalize category name to slug format
   const normalizeToSlug = (categoryName: string): string => {
