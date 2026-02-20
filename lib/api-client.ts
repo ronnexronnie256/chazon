@@ -49,7 +49,16 @@ export class ApiClient {
       },
     })
 
-    const data = await response.json()
+    // Attempt to parse JSON; if the response is HTML (e.g., redirected login page), throw a clear error
+    let data: any
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      data = await response.json()
+    } else {
+      const text = await response.text()
+      // Provide a clearer error to the caller
+      throw new Error('Received non-JSON response from API')
+    }
 
     // Check for Step-Up Authentication requirement
     // This typically happens for high-risk actions (e.g. wallet withdrawal)
