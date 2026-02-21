@@ -145,7 +145,29 @@ npm run db:seed      # Seed database with sample data
 ```
 
 ## 🔐 Authentication
-Authentication is simulated client-side with a lightweight store. Sign-in and sign-up update local state only.
+
+The app uses Clerk for UI and session management, with route protection handled by a Next.js proxy.
+
+- Pages
+  - Sign in: `/auth/signin` → [app/auth/signin/[[...index]]/page.tsx](app/auth/signin/[[...index]]/page.tsx)
+  - Sign up: `/auth/signup` → [app/auth/signup/[[...index]]/page.tsx](app/auth/signup/[[...index]]/page.tsx)
+- Post-auth redirects
+  - After sign-in: `/dashboard`
+  - After sign-up: `/dashboard`
+- Route guards
+  - Guarded routes via `proxy.ts`: `/dashboard`, `/settings`, `/profile`, `/admin`, `/bookings`
+  - Unauthenticated access redirects to the sign-in page
+- Auth page behavior
+  - If already authenticated, visiting `/auth/*` redirects to `/dashboard`
+- Configuration notes
+  - ClerkProvider is initialized in `app/layout.tsx`
+  - Authorized callback (lib/auth.config.ts) and helper middleware (lib/supabase/middleware.ts) align with the `/dashboard` landing
+
+### Testing the flow
+1. Sign-out and open a private window.
+2. Visit `/auth/signin` and complete auth → redirected to `/dashboard`.
+3. Visit `/dashboard` while signed out → redirected to `/auth/signin`.
+4. Attempt `/auth/signin` while signed in → redirected to `/dashboard`.
 
 ## 💳 Payment Integration
 Not applicable in frontend-only mode.

@@ -54,10 +54,9 @@ export async function updateSession(request: NextRequest) {
   // BUT allow reset-password page (users need recovery session to reset password)
   if (isOnAuth && user && !isOnResetPassword) {
     const url = request.nextUrl.clone()
-    url.pathname = '/services'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
   return supabaseResponse
 }
-

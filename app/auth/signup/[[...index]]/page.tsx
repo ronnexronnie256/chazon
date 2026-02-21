@@ -13,7 +13,7 @@ export default function SignUpCatchAllPage() {
         }}
         routing="path"
         path="/auth/signup"
-        afterSignUpUrl="/services"
+        afterSignUpUrl="/dashboard"
         signInUrl="/auth/signin"
       />
     </div>

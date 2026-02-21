@@ -14,7 +14,7 @@ export default function SignInCatchAllPage() {
         oauthFlow="redirect"
         routing="path"
         path="/auth/signin"
-        afterSignInUrl="/services"
+        afterSignInUrl="/dashboard"
       />
     </div>
   )
