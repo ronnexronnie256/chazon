@@ -1,20 +1,20 @@
 "use client"
 
-import { SignIn } from '@clerk/nextjs'
+import { SignUp } from '@clerk/nextjs'
 
-export default function SignInCatchAllPage() {
+export default function SignUpCatchAllPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
-      <SignIn
+      <SignUp
         appearance={{
           elements: {
             rootBox: 'w-full max-w-md',
           },
         }}
-        oauthFlow="redirect"
         routing="path"
-        path="/auth/signin"
-        afterSignInUrl="/services"
+        path="/auth/signup"
+        afterSignUpUrl="/services"
+        signInUrl="/auth/signin"
       />
     </div>
   )
