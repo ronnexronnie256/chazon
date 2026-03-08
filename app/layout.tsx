@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { Toaster } from 'react-hot-toast'
-import { ClerkProvider } from '@clerk/nextjs'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,21 +20,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClerkProvider>
-          <Providers>
-            {children}
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#765050FF',
-                  color: '#fff',
-                },
-              }}
-            />
-          </Providers>
-        </ClerkProvider>
+        <Providers>
+          {children}
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#765050FF',
+                color: '#fff',
+              },
+            }}
+          />
+        </Providers>
       </body>
     </html>
   )
