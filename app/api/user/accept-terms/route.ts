@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: updateError } = await supabase
-      .from('user')
+      .from('User')
       .update({
         termsAcceptedAt: new Date().toISOString(),
         termsVersion: version,
