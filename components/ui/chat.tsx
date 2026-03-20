@@ -4,7 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ImageIcon, Send, Upload, Flag, Check, CheckCheck } from 'lucide-react';
+import {
+  ImageIcon,
+  Send,
+  Upload,
+  Flag,
+  Check,
+  CheckCheck,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { formatDateTime } from '@/lib/utils';
@@ -37,6 +46,7 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [reportModal, setReportModal] = useState<{
     open: boolean;
     message?: ChatMessage;
@@ -44,8 +54,16 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
   const [reportReason, setReportReason] = useState('');
   const [isReporting, setIsReporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const fetchMessages = async () => {
     try {
       const response = await fetch(`/api/chat/${taskId}`);
@@ -63,21 +81,18 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
     }
   };
 
-  // Set up Realtime subscription for new messages
   useEffect(() => {
-    // Initial fetch
     fetchMessages();
 
-    // Subscribe to new messages via Supabase Realtime
     let channel: RealtimeChannel | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
 
     try {
       channel = subscribeToTaskMessages(
         taskId,
         newMessage => {
-          // Add new message to the list if it doesn't already exist
+          console.log('[Chat] New realtime message:', newMessage.id);
           setMessages(prev => {
-            // Check if message already exists (avoid duplicates)
             if (prev.some(msg => msg.id === newMessage.id)) {
               return prev;
             }
@@ -85,23 +100,33 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
           });
         },
         error => {
-          console.error('Realtime subscription error:', error);
-          // Fallback to polling if Realtime fails
-          toast.error('Real-time updates unavailable, using polling');
+          console.error(
+            '[Chat] Realtime error, falling back to polling:',
+            error
+          );
+          setRealtimeConnected(false);
+          if (!pollInterval) {
+            pollInterval = setInterval(fetchMessages, 5000);
+          }
         }
       );
+
+      channel.on('system', { event: 'connected' }, () => {
+        console.log('[Chat] Realtime connected');
+        setRealtimeConnected(true);
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      });
     } catch (error) {
-      console.error('Error setting up Realtime subscription:', error);
-      // Fallback to polling if Realtime setup fails
-      const interval = setInterval(fetchMessages, 3000);
-      return () => clearInterval(interval);
+      console.error('[Chat] Error setting up Realtime:', error);
+      pollInterval = setInterval(fetchMessages, 5000);
     }
 
-    // Cleanup subscription on unmount or taskId change
     return () => {
-      if (channel) {
-        channel.unsubscribe();
-      }
+      if (channel) channel.unsubscribe();
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [taskId]);
 
@@ -273,6 +298,19 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
             </p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          {realtimeConnected ? (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Wifi className="h-3 w-3" />
+              Live
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              <WifiOff className="h-3 w-3" />
+              Polling
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Messages Area */}
@@ -359,6 +397,7 @@ export function Chat({ taskId, currentUserId }: ChatProps) {
             );
           })
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}

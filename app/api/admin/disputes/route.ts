@@ -7,12 +7,11 @@ export async function GET(req: Request) {
     await requireRole('ADMIN');
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status'); // 'OPEN', 'UNDER_REVIEW', 'RESOLVED'
+    const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
 
-    // Build where clause
     const where: any = {};
     if (status) {
       where.status = status;
@@ -51,12 +50,32 @@ export async function GET(req: Request) {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         skip,
         take: limit,
       }),
       prisma.dispute.count({ where }),
     ]);
+
+    const statusCounts = await prisma.dispute.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+
+    const counts = {
+      total,
+      OPEN: 0,
+      UNDER_REVIEW: 0,
+      ESCALATED: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+    };
+
+    for (const item of statusCounts) {
+      if (item.status in counts) {
+        counts[item.status as keyof typeof counts] = item._count;
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -69,9 +88,18 @@ export async function GET(req: Request) {
           totalPages: Math.ceil(total / limit),
         },
       },
+      counts,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching disputes:', error);
+
+    if (error.message?.includes('Forbidden')) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: 'Failed to fetch disputes' },
       { status: 500 }
@@ -84,22 +112,37 @@ export async function PATCH(req: Request) {
     await requireRole('ADMIN');
 
     const body = await req.json();
-    const { disputeId, status, resolution } = body;
+    const { disputeId, status, resolution, refundAmount, payoutAmount } = body;
 
-    if (!disputeId || !status) {
+    if (!disputeId) {
       return NextResponse.json(
-        { success: false, error: 'Dispute ID and status are required' },
+        { success: false, error: 'Dispute ID is required' },
         { status: 400 }
       );
     }
 
     const updateData: any = {
-      status,
       updatedAt: new Date(),
     };
 
+    if (status) {
+      updateData.status = status;
+
+      if (status === 'RESOLVED') {
+        updateData.resolvedAt = new Date();
+      }
+    }
+
     if (resolution) {
       updateData.resolution = resolution;
+    }
+
+    if (refundAmount !== undefined) {
+      updateData.refundAmount = refundAmount;
+    }
+
+    if (payoutAmount !== undefined) {
+      updateData.payoutAmount = payoutAmount;
     }
 
     const updatedDispute = await prisma.dispute.update({
@@ -115,12 +158,6 @@ export async function PATCH(req: Request) {
         opener: true,
       },
     });
-
-    // If dispute is resolved, unfreeze any frozen payouts for this task
-    if (status === 'RESOLVED') {
-      // The wallet system will automatically recalculate balances
-      // when it checks for disputed tasks
-    }
 
     return NextResponse.json({
       success: true,

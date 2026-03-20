@@ -9,8 +9,8 @@ import { StewardBadges } from '@/components/ui/steward-badges';
 import { ReviewsList } from '@/components/ui/reviews-list';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { prisma } from '@/lib/prisma';
-import { calculateStewardBadges } from '@/lib/badges';
-import type { Service, StewardBadge } from '@/types/service';
+import { calculateStewardBadges, type Badge as BadgeType } from '@/lib/badges';
+import type { Service } from '@/types/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +46,7 @@ export default async function ServiceDetailPage({
     }
 
     // Get steward badges
-    const badges: StewardBadge[] = await calculateStewardBadges(
+    const badges: BadgeType[] = await calculateStewardBadges(
       offering.steward.userId
     );
 
@@ -129,7 +129,7 @@ export default async function ServiceDetailPage({
             rating: o.steward.rating,
             totalReviews: o.steward.completedTasks,
             bio: o.steward.bio || undefined,
-            badges: relatedBadges,
+            badges: relatedBadges as any,
           },
         };
       })

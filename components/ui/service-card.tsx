@@ -1,39 +1,59 @@
-'use client'
+'use client';
 
-import Image from 'next/image'
-import { ImageWithFallback } from '@/components/ui/image-with-fallback'
-import { UserAvatar } from '@/components/ui/user-avatar'
-import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Star, MapPin, CheckCircle, Clock, Sparkles } from 'lucide-react'
-import { StewardBadges } from '@/components/ui/steward-badges'
-import type { Service as ServiceCardType } from '@/types/service'
+import Image from 'next/image';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Star, MapPin, CheckCircle, Clock, Sparkles } from 'lucide-react';
+import { StewardBadges } from '@/components/ui/steward-badges';
+import type { Service as ServiceCardType } from '@/types/service';
 
 interface ServiceCardProps {
-  service: ServiceCardType
-  highlight?: string
+  service: ServiceCardType & { distance?: number; isRecommended?: boolean };
+  highlight?: string;
+  showDistance?: boolean;
+  distance?: number;
+  isRecommended?: boolean;
 }
 
 function Highlight({ text, query }: { text: string; query?: string }) {
-  if (!query || !text.toLowerCase().includes(query.toLowerCase())) return <>{text}</>
-  const q = query.toLowerCase()
-  const parts = text.split(new RegExp(`(${query})`, 'ig'))
+  if (!query || !text.toLowerCase().includes(query.toLowerCase()))
+    return <>{text}</>;
+  const q = query.toLowerCase();
+  const parts = text.split(new RegExp(`(${query})`, 'ig'));
   return (
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === q ? (
-          <span key={i} className="bg-yellow-200 font-semibold">{part}</span>
+          <span key={i} className="bg-yellow-200 font-semibold">
+            {part}
+          </span>
         ) : (
           <span key={i}>{part}</span>
         )
       )}
     </>
-  )
+  );
 }
 
-export function ServiceCard({ service, highlight }: ServiceCardProps) {
-  const { steward } = service
+export function ServiceCard({
+  service,
+  highlight,
+  showDistance,
+  distance,
+  isRecommended,
+}: ServiceCardProps) {
+  const { steward } = service;
+  const displayDistance = distance ?? service.distance;
+  const displayRecommended = isRecommended ?? service.isRecommended;
 
   return (
     <Link href={`/service/${service.id}`} className="block group">
@@ -48,16 +68,16 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
             />
             {/* Overlay gradient for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            
+
             {/* Top badges overlay */}
             <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 z-10">
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 className="capitalize text-xs font-semibold bg-white/95 backdrop-blur-sm text-gray-800 border-0 shadow-md"
               >
                 {service.category.name}
               </Badge>
-              {service.isRecommended && (
+              {displayRecommended && (
                 <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white hover:from-yellow-500 hover:to-yellow-600 flex items-center gap-1 text-xs font-semibold shadow-lg border-0">
                   <Sparkles className="h-3 w-3 fill-current" />
                   Recommended
@@ -75,12 +95,12 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-grow p-5 space-y-3">
           <CardTitle className="text-xl font-bold text-gray-900 leading-tight line-clamp-2 min-h-[3rem] group-hover:text-chazon-primary transition-colors">
             <Highlight text={service.title} query={highlight} />
           </CardTitle>
-          
+
           {service.description && (
             <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
               {service.description}
@@ -88,12 +108,15 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
           )}
 
           <div className="flex items-center gap-4 flex-wrap pt-2 border-t border-gray-100">
-            {service.distance !== undefined && (
-              <div className="flex items-center text-sm text-gray-600">
-                <MapPin className="h-4 w-4 mr-1.5 text-chazon-primary flex-shrink-0" />
-                <span className="font-medium">{service.distance.toFixed(1)} km</span>
-              </div>
-            )}
+            {(showDistance || displayDistance !== undefined) &&
+              displayDistance !== undefined && (
+                <div className="flex items-center text-sm text-gray-600">
+                  <MapPin className="h-4 w-4 mr-1.5 text-chazon-primary flex-shrink-0" />
+                  <span className="font-medium">
+                    {displayDistance.toFixed(1)} km
+                  </span>
+                </div>
+              )}
             {service.duration && (
               <div className="flex items-center text-sm text-gray-600">
                 <Clock className="h-4 w-4 mr-1.5 text-gray-400 flex-shrink-0" />
@@ -114,7 +137,7 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
             )}
           </div>
         </CardContent>
-        
+
         <CardFooter className="p-5 pt-0 border-t border-gray-100 bg-gradient-to-br from-gray-50/50 to-white">
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center min-w-0 flex-1 gap-3">
@@ -126,7 +149,9 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <p className="font-semibold text-gray-900 truncate text-sm">{steward.name}</p>
+                  <p className="font-semibold text-gray-900 truncate text-sm">
+                    {steward.name}
+                  </p>
                   {steward.badges && steward.badges.length > 0 && (
                     <StewardBadges badges={steward.badges} size="sm" />
                   )}
@@ -138,14 +163,16 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
                       {steward.rating?.toFixed(1) || 'New'}
                     </span>
                   </div>
-                  {steward.totalReviews !== undefined && steward.totalReviews > 0 && (
-                    <>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-gray-600">
-                        {steward.totalReviews} {steward.totalReviews === 1 ? 'review' : 'reviews'}
-                      </span>
-                    </>
-                  )}
+                  {steward.totalReviews !== undefined &&
+                    steward.totalReviews > 0 && (
+                      <>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-600">
+                          {steward.totalReviews}{' '}
+                          {steward.totalReviews === 1 ? 'review' : 'reviews'}
+                        </span>
+                      </>
+                    )}
                 </div>
               </div>
             </div>
@@ -153,5 +180,5 @@ export function ServiceCard({ service, highlight }: ServiceCardProps) {
         </CardFooter>
       </Card>
     </Link>
-  )
+  );
 }

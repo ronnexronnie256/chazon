@@ -426,8 +426,14 @@ model Dispute {
   openerId   String
   opener     User          @relation(fields: [openerId], references: [id])
   reason     String
+  description String?       @db.Text
+  evidence   String[]      @default([])
   status     DisputeStatus @default(OPEN)
-  resolution String?
+  resolution String?       @db.Text
+  resolvedById String?
+  resolvedAt DateTime?
+  refundAmount Float?
+  payoutAmount Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -439,7 +445,9 @@ model Dispute {
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
+  ESCALATED
   RESOLVED
+  CLOSED
 }
 
 // Promo Code (PRD 6.5)
@@ -523,4 +531,6 @@ model Review {
   @@unique([taskId, reviewerId]) // One review per reviewer per task
   @@index([revieweeId]) // For quick lookup of reviews for a user
 }
+
+
 
