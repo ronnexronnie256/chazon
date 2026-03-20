@@ -10,27 +10,36 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user exists by email
+    // Check if user exists by ID
     let dbUser = await prisma.user.findUnique({
-      where: { email: user.email || 'admin@chazon.com' },
+      where: { id: user.id },
       select: { id: true, email: true, name: true, role: true },
     });
 
-    // If found by email but different ID, update by email
+    // If found by ID, just update role
     if (dbUser && dbUser.role !== 'ADMIN') {
       dbUser = await prisma.user.update({
-        where: { email: user.email || 'admin@chazon.com' },
+        where: { id: user.id },
         data: { role: 'ADMIN' },
         select: { id: true, email: true, name: true, role: true },
       });
     }
+    // If found by email with different ID, we need to update the ID
+    else if (!dbUser) {
+      const existingByEmail = await prisma.user.findUnique({
+        where: { email: user.email || 'admin@chazon.com' },
+      });
 
-    // If no user found at all, create with upsert
-    if (!dbUser) {
-      dbUser = await prisma.user.upsert({
-        where: { id: user.id },
-        update: { role: 'ADMIN' },
-        create: {
+      if (existingByEmail) {
+        // Delete the old record and create new with correct ID
+        await prisma.user.delete({
+          where: { id: existingByEmail.id },
+        });
+      }
+
+      // Create with correct ID
+      dbUser = await prisma.user.create({
+        data: {
           id: user.id,
           name: user.name || 'Admin User',
           email: user.email || 'admin@chazon.com',
@@ -44,6 +53,7 @@ export async function GET() {
       success: true,
       message: 'You are now an ADMIN',
       user: dbUser,
+      authId: user.id,
     });
   } catch (error) {
     console.error('Fix admin error:', error);
