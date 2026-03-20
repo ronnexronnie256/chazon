@@ -23,8 +23,23 @@ export default function AuthCallbackPage() {
       }
 
       if (session) {
-        router.push('/dashboard');
-        router.refresh();
+        // Fetch user role for role-based redirect
+        try {
+          const response = await fetch('/api/auth/me');
+          const data = await response.json();
+
+          if (data.user?.role === 'ADMIN') {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
+          router.refresh();
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+          // Fallback to dashboard
+          router.push('/dashboard');
+          router.refresh();
+        }
       } else {
         router.push('/auth/signin');
       }

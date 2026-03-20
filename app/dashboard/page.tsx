@@ -150,6 +150,11 @@ export default function DashboardPage() {
     redirect('/auth/signin');
   }
 
+  // Redirect admin users to admin dashboard
+  if (user.role === 'ADMIN') {
+    redirect('/admin');
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TermsBanner />

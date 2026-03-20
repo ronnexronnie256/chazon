@@ -1,88 +1,88 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Search, Menu, X, User, Bell, MessageSquare } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { subscribeToUnreadCount } from '@/lib/supabase/realtime'
-import type { RealtimeChannel } from '@supabase/supabase-js'
-import { NotificationsDropdown } from '@/components/ui/notifications-dropdown'
-import { Input } from '@/components/ui/input'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Search, Menu, X, User, Bell, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { subscribeToUnreadCount } from '@/lib/supabase/realtime';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { NotificationsDropdown } from '@/components/ui/notifications-dropdown';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { useAuthStore } from '@/store/auth'
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { useAuthStore } from '@/store/auth';
 
 export function Header() {
-  const { isAuthenticated, user, logout } = useAuthStore()
-  const router = useRouter()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [unreadCount, setUnreadCount] = useState(0)
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
-  }
+  };
 
   // Fetch unread message count and set up Realtime subscription
   useEffect(() => {
     if (isAuthenticated && user) {
       // Initial fetch
-      fetchUnreadCount()
+      fetchUnreadCount();
 
       // Set up Realtime subscription for unread count updates
-      let channel: RealtimeChannel | null = null
+      let channel: RealtimeChannel | null = null;
 
       try {
         channel = subscribeToUnreadCount(
           user.id,
-          (count) => {
-            setUnreadCount(count)
+          count => {
+            setUnreadCount(count);
           },
-          (error) => {
-            console.error('Realtime subscription error:', error)
+          error => {
+            console.error('Realtime subscription error:', error);
             // Fallback to polling if Realtime fails
-            const interval = setInterval(fetchUnreadCount, 10000)
-            return () => clearInterval(interval)
+            const interval = setInterval(fetchUnreadCount, 10000);
+            return () => clearInterval(interval);
           }
-        )
+        );
       } catch (error) {
-        console.error('Error setting up Realtime subscription:', error)
+        console.error('Error setting up Realtime subscription:', error);
         // Fallback to polling if Realtime setup fails
-        const interval = setInterval(fetchUnreadCount, 10000)
-        return () => clearInterval(interval)
+        const interval = setInterval(fetchUnreadCount, 10000);
+        return () => clearInterval(interval);
       }
 
       // Cleanup subscription on unmount
       return () => {
         if (channel) {
-          channel.unsubscribe()
+          channel.unsubscribe();
         }
-      }
+      };
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user]);
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('/api/chat/unread')
+      const response = await fetch('/api/chat/unread');
       if (response.ok) {
-        const data = await response.json()
-        setUnreadCount(data.unreadCount || 0)
+        const data = await response.json();
+        setUnreadCount(data.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error)
+      console.error('Error fetching unread count:', error);
     }
-  }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -105,7 +105,7 @@ export function Header() {
                   type="text"
                   placeholder="What do you need help with?"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-chazon-primary focus:border-transparent"
                 />
               </div>
@@ -157,11 +157,19 @@ export function Header() {
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Button
+                      variant="ghost"
+                      className="relative h-8 w-8 rounded-full"
+                    >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.image || ''} alt={user?.name || ''} />
+                        <AvatarImage
+                          src={user?.image || ''}
+                          alt={user?.name || ''}
+                        />
                         <AvatarFallback>
-                          {user?.name?.charAt(0) || <User className="w-4 h-4" />}
+                          {user?.name?.charAt(0) || (
+                            <User className="w-4 h-4" />
+                          )}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -211,18 +219,20 @@ export function Header() {
                           <Link href="/admin/payouts">Payouts</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href="/admin/stewards">Steward Applications</Link>
+                          <Link href="/admin/stewards">
+                            Steward Applications
+                          </Link>
                         </DropdownMenuItem>
                       </>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={async (event) => {
-                        event.preventDefault()
-                        await logout()
-                        router.push('/')
-                        router.refresh()
+                      onSelect={async event => {
+                        event.preventDefault();
+                        await logout();
+                        router.push('/auth/signin');
+                        router.refresh();
                       }}
                     >
                       Sign out
@@ -232,10 +242,16 @@ export function Header() {
               </div>
             ) : (
               <div className="flex items-center space-x-3">
-                <Button variant="ghost" onClick={() => router.push('/auth/signin')}>
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/auth/signin')}
+                >
                   Log in
                 </Button>
-                <Button onClick={() => router.push('/auth/signup')} className="bg-chazon-primary hover:bg-chazon-primary-dark">
+                <Button
+                  onClick={() => router.push('/auth/signup')}
+                  className="bg-chazon-primary hover:bg-chazon-primary-dark"
+                >
                   Sign up
                 </Button>
               </div>
@@ -249,7 +265,11 @@ export function Header() {
               size="sm"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </Button>
           </div>
         </div>
@@ -263,7 +283,7 @@ export function Header() {
                 type="text"
                 placeholder="What do you need help with?"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full"
               />
             </div>
@@ -299,15 +319,17 @@ export function Header() {
                 )}
               </Link>
             )}
-            {isAuthenticated && user?.role !== 'STEWARD' && user?.role !== 'ADMIN' && (
-              <Link
-                href="/become-steward"
-                className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Become a Steward
-              </Link>
-            )}
+            {isAuthenticated &&
+              user?.role !== 'STEWARD' &&
+              user?.role !== 'ADMIN' && (
+                <Link
+                  href="/become-steward"
+                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Become a Steward
+                </Link>
+              )}
             {isAuthenticated && user?.role === 'ADMIN' && (
               <>
                 <Link
@@ -372,10 +394,10 @@ export function Header() {
                 </Link>
                 <button
                   onClick={async () => {
-                    setIsMenuOpen(false)
-                    await logout()
-                    router.push('/')
-                    router.refresh()
+                    setIsMenuOpen(false);
+                    await logout();
+                    router.push('/auth/signin');
+                    router.refresh();
                   }}
                   className="block w-full text-left px-3 py-2 text-gray-700 hover:text-chazon-primary"
                 >
@@ -386,8 +408,8 @@ export function Header() {
               <>
                 <button
                   onClick={() => {
-                    router.push('/auth/signin')
-                    setIsMenuOpen(false)
+                    router.push('/auth/signin');
+                    setIsMenuOpen(false);
                   }}
                   className="block w-full text-left px-3 py-2 text-gray-700 hover:text-chazon-primary"
                 >
@@ -395,8 +417,8 @@ export function Header() {
                 </button>
                 <button
                   onClick={() => {
-                    router.push('/auth/signup')
-                    setIsMenuOpen(false)
+                    router.push('/auth/signup');
+                    setIsMenuOpen(false);
                   }}
                   className="block w-full text-left px-3 py-2 text-white bg-chazon-primary rounded-md"
                 >
@@ -408,5 +430,5 @@ export function Header() {
         </div>
       )}
     </header>
-  )
+  );
 }

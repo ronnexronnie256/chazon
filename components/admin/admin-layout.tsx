@@ -320,12 +320,36 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </p>
                 </div>
               </div>
+              <button
+                onClick={async () => {
+                  const { logout: logoutUser } = useAuthStore.getState();
+                  await logoutUser();
+                  router.push('/auth/signin');
+                  router.refresh();
+                }}
+                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Sign Out</span>
+              </button>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
               <Link href="/dashboard">
                 <Home className="h-5 w-5 text-gray-400 hover:text-white" />
               </Link>
+              <button
+                onClick={async () => {
+                  const { logout: logoutUser } = useAuthStore.getState();
+                  await logoutUser();
+                  router.push('/auth/signin');
+                  router.refresh();
+                }}
+                className="p-2 rounded-lg hover:bg-gray-800"
+                title="Sign Out"
+              >
+                <LogOut className="h-5 w-5 text-gray-400 hover:text-white" />
+              </button>
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.image || ''} />
                 <AvatarFallback>{user?.name?.charAt(0) || 'A'}</AvatarFallback>
