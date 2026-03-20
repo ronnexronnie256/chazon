@@ -4,36 +4,161 @@ import { ServiceCard } from '@/components/ui/service-card';
 import { ServiceFilterSidebar } from '@/components/ui/service-filter-sidebar';
 import { Pagination } from '@/components/ui/pagination';
 import { FilterChips } from '@/components/ui/filter-chips';
-import { ApiClient } from '@/lib/api-client';
+import { prisma } from '@/lib/prisma';
+import { calculateStewardBadges } from '@/lib/badges';
 import Link from 'next/link';
-import { Package } from 'lucide-react';
+import { Package, AlertCircle } from 'lucide-react';
+import type { Service, Category, StewardBadge } from '@/types/service';
 
-// This function fetches the services and its return type will be used to infer the service type
+interface ServiceResult {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  duration: number;
+  images: string[];
+  category: Category;
+  steward: {
+    id: string;
+    userId: string;
+    name: string;
+    image?: string;
+    rating: number;
+    totalReviews: number;
+    bio?: string;
+    badges: StewardBadge[];
+  };
+  isRecommended?: boolean;
+}
+
+interface CategoryResult {
+  id: string;
+  name: string;
+  slug: string;
+  count?: number;
+}
+
 async function getServices(filters: {
   category?: string;
   price?: string;
   sortBy?: string;
   page?: number;
   pageSize?: number;
-}) {
-  const params = new URLSearchParams();
-  if (filters.category) params.set('category', filters.category);
-  if (filters.price) params.set('maxPrice', filters.price);
-  if (filters.sortBy) params.set('sortBy', filters.sortBy);
-  if (filters.page) params.set('page', filters.page.toString());
-  if (filters.pageSize) params.set('limit', filters.pageSize.toString());
+}): Promise<{
+  items: ServiceResult[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 9;
 
   try {
-    const response = await ApiClient.services.list(params);
-    return {
-      items: response.data,
-      total: response.meta?.pagination?.total || 0,
-      page: response.meta?.pagination?.page || 1,
-      pageSize: filters.pageSize || 9,
-    };
+    const where: any = {};
+
+    if (filters.category && filters.category !== 'All') {
+      where.category = filters.category;
+    }
+
+    if (filters.price) {
+      where.price = { lte: parseFloat(filters.price) };
+    }
+
+    where.steward = { status: 'APPROVED' };
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (filters.sortBy) {
+      const [field, order] = filters.sortBy.split(':');
+      if (field === 'price') {
+        orderBy = { price: order === 'asc' ? 'asc' : 'desc' };
+      }
+    }
+
+    const [totalCount, offerings] = await Promise.all([
+      prisma.serviceOffering.count({ where }),
+      prisma.serviceOffering.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          steward: {
+            include: {
+              user: {
+                select: { id: true, name: true, image: true },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const stewardIds = offerings.map(o => o.steward.userId);
+    const badgesResults = await Promise.all(
+      stewardIds.map(userId => calculateStewardBadges(userId))
+    );
+    const badgesMap = new Map(
+      stewardIds.map((id, i) => [id, badgesResults[i]])
+    );
+
+    const items: ServiceResult[] = offerings.map(offering => ({
+      id: offering.id,
+      title: offering.title,
+      description: offering.description || '',
+      price: offering.price,
+      currency: offering.currency,
+      duration: offering.duration,
+      images:
+        offering.images.length > 0
+          ? offering.images
+          : [
+              'https://images.unsplash.com/photo-1581578731117-104f8a338e2d?w=800&q=80',
+            ],
+      category: {
+        id: offering.category.toLowerCase(),
+        name:
+          offering.category.charAt(0).toUpperCase() +
+          offering.category.slice(1),
+        slug: offering.category.toLowerCase(),
+      },
+      steward: {
+        id: offering.steward.id,
+        userId: offering.steward.userId,
+        name: offering.steward.user.name,
+        image: offering.steward.user.image || undefined,
+        rating: offering.steward.rating,
+        totalReviews: offering.steward.completedTasks,
+        bio: offering.steward.bio || undefined,
+        badges: badgesMap.get(offering.steward.userId) || [],
+      },
+    }));
+
+    return { items, total: totalCount, page, pageSize };
   } catch (error) {
     console.error('Failed to fetch services:', error);
-    return { items: [], total: 0, page: 1, pageSize: 9 };
+    return { items: [], total: 0, page, pageSize };
+  }
+}
+
+async function getCategories(): Promise<CategoryResult[]> {
+  try {
+    const categories = await prisma.serviceOffering.groupBy({
+      by: ['category'],
+      where: { steward: { status: 'APPROVED' } },
+      _count: true,
+      orderBy: { _count: { category: 'desc' } },
+    });
+
+    return categories.map(c => ({
+      id: c.category.toLowerCase(),
+      name: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+      slug: c.category.toLowerCase(),
+      count: c._count,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch categories:', error);
+    return [];
   }
 }
 
@@ -42,20 +167,10 @@ interface ServicesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-async function getCategories() {
-  try {
-    return await ApiClient.categories.list();
-  } catch (error) {
-    console.error('Failed to fetch categories:', error);
-    return [];
-  }
-}
-
 export default async function ServicesPage({
   params,
   searchParams,
 }: ServicesPageProps) {
-  // We don't use params in this page, but it's required by Next.js 15
   await params;
   const resolvedSearchParams = await searchParams;
   const filters = {
@@ -93,8 +208,8 @@ export default async function ServicesPage({
                 </h1>
                 <p className="text-xl text-gray-600">
                   {currentCategory
-                    ? `Explore services in the ${currentCategory.name} category.`
-                    : 'Find the perfect steward for any task.'}
+                    ? `Explore ${currentCategory.count || ''} services in the ${currentCategory.name} category.`
+                    : `Browse ${total} service professionals ready to help.`}
                 </p>
               </div>
 
@@ -136,7 +251,9 @@ export default async function ServicesPage({
                 </div>
               )}
 
-              <Pagination total={total} page={page} pageSize={pageSize} />
+              {total > pageSize && (
+                <Pagination total={total} page={page} pageSize={pageSize} />
+              )}
             </div>
           </div>
         </div>
