@@ -11,47 +11,27 @@ export async function GET(request: NextRequest) {
 
     const where =
       filter === 'pending'
-        ? { reviewed: false }
+        ? { isFlagged: true, reviewed: false }
         : filter === 'reviewed'
-          ? { reviewed: true }
-          : {};
+          ? { isFlagged: true, reviewed: true }
+          : { isFlagged: true };
 
-    const flaggedMessages = await prisma.flaggedMessage.findMany({
+    const flaggedMessages = await prisma.chatMessage.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: {
+        sender: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+        task: {
+          select: { id: true, status: true },
+        },
+      },
     });
-
-    // Get unique sender IDs
-    const senderIdSet = new Set<string>();
-    for (const msg of flaggedMessages) {
-      senderIdSet.add(msg.senderId);
-    }
-    const senderIds = Array.from(senderIdSet);
-
-    const senders =
-      senderIds.length > 0
-        ? await prisma.user.findMany({
-            where: { id: { in: senderIds } },
-            select: { id: true, name: true, email: true },
-          })
-        : [];
-
-    const senderMap = new Map<
-      string,
-      { id: string; name: string; email: string | null }
-    >();
-    for (const s of senders) {
-      senderMap.set(s.id, s);
-    }
-
-    const messagesWithSenders = flaggedMessages.map(msg => ({
-      ...msg,
-      sender: senderMap.get(msg.senderId),
-    }));
 
     return NextResponse.json({
       success: true,
-      data: messagesWithSenders,
+      data: flaggedMessages,
     });
   } catch (error) {
     console.error('Error fetching flagged messages:', error);

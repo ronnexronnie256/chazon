@@ -16,6 +16,12 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '9');
   const stewardId = searchParams.get('stewardId'); // 'me' for current user, or specific steward ID
 
+  console.log('[DEBUG] Services API called with:', {
+    stewardId,
+    category,
+    search,
+  });
+
   // Smart matching parameters
   const clientLat = searchParams.get('latitude');
   const clientLng = searchParams.get('longitude');
@@ -31,15 +37,25 @@ export async function GET(req: NextRequest) {
     if (stewardId === 'me') {
       // Get current user's steward profile
       const authUser = await getUser();
+      console.log('[DEBUG] Auth user:', authUser);
+
       if (authUser?.email) {
         const user = await prisma.user.findUnique({
           where: { email: authUser.email },
           include: { stewardProfile: true },
         });
+        console.log(
+          '[DEBUG] Prisma user with profile:',
+          user?.id,
+          user?.stewardProfile?.id
+        );
+
         if (user?.stewardProfile) {
           where.stewardId = user.stewardProfile.id;
+          console.log('[DEBUG] Setting stewardId filter to:', where.stewardId);
         } else {
           // Not a steward, return empty
+          console.log('[DEBUG] User is not a steward');
           return NextResponse.json({
             success: true,
             data: [],
@@ -54,6 +70,7 @@ export async function GET(req: NextRequest) {
           });
         }
       } else {
+        console.log('[DEBUG] No auth user email');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     } else {
@@ -90,12 +107,14 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  // Ensure only approved stewards are shown
-  where.steward = {
-    is: {
-      status: 'APPROVED',
-    },
-  };
+  // Ensure only approved stewards are shown (unless viewing own services)
+  if (!stewardId || stewardId !== 'me') {
+    where.steward = {
+      is: {
+        status: 'APPROVED',
+      },
+    };
+  }
 
   const orderBy: Prisma.ServiceOfferingOrderByWithRelationInput = {};
   if (sortBy) {
@@ -216,6 +235,11 @@ export async function GET(req: NextRequest) {
       });
     } else {
       // Standard query without smart matching
+      console.log(
+        '[DEBUG] Final where clause:',
+        JSON.stringify(where, null, 2)
+      );
+
       const [totalCount, offerings] = await Promise.all([
         prisma.serviceOffering.count({ where }),
         prisma.serviceOffering.findMany({
@@ -232,6 +256,12 @@ export async function GET(req: NextRequest) {
           },
         }),
       ]);
+
+      console.log(
+        '[DEBUG] Found offerings:',
+        totalCount,
+        offerings.map(o => ({ id: o.id, title: o.title }))
+      );
 
       total = totalCount;
 

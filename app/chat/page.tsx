@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { Chat } from "@/components/ui/chat";
-import { useAuthStore } from "@/store/auth";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { MessageSquare, Calendar, MapPin, Clock } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { subscribeToConversations } from "@/lib/supabase/realtime";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useState, useEffect } from 'react';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+import { Chat } from '@/components/ui/chat';
+import { useAuthStore } from '@/store/auth';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { MessageSquare, Calendar, MapPin, Clock } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { subscribeToConversations } from '@/lib/supabase/realtime';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Conversation {
   taskId: string;
@@ -42,7 +42,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
-      redirect("/auth/signin");
+      redirect('/auth/signin');
     }
 
     // Initial fetch
@@ -58,15 +58,15 @@ export default function ChatPage() {
           // Refresh conversations when new messages arrive
           fetchConversations();
         },
-        (error) => {
-          console.error("Realtime subscription error:", error);
+        error => {
+          console.error('Realtime subscription error:', error);
           // Fallback to polling if Realtime fails
           const interval = setInterval(fetchConversations, 5000);
           return () => clearInterval(interval);
         }
       );
     } catch (error) {
-      console.error("Error setting up Realtime subscription:", error);
+      console.error('Error setting up Realtime subscription:', error);
       // Fallback to polling if Realtime setup fails
       const interval = setInterval(fetchConversations, 5000);
       return () => clearInterval(interval);
@@ -82,7 +82,7 @@ export default function ChatPage() {
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch("/api/chat/unread");
+      const response = await fetch('/api/chat/unread');
       if (response.ok) {
         const data = await response.json();
         setConversations(data.conversations || []);
@@ -92,7 +92,7 @@ export default function ChatPage() {
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error("Error fetching conversations:", error);
+      console.error('Error fetching conversations:', error);
       setConversations([]);
       setUnreadCount(0);
     } finally {
@@ -127,14 +127,14 @@ export default function ChatPage() {
                   </div>
                 ) : conversations.length > 0 ? (
                   <div className="space-y-2">
-                    {conversations.map((conv) => (
+                    {conversations.map(conv => (
                       <button
                         key={conv.taskId}
                         onClick={() => setSelectedTaskId(conv.taskId)}
                         className={`w-full text-left p-3 rounded-lg transition-colors ${
                           selectedTaskId === conv.taskId
-                            ? "bg-chazon-primary text-white"
-                            : "bg-gray-50 hover:bg-gray-100"
+                            ? 'bg-chazon-primary text-white'
+                            : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -152,8 +152,8 @@ export default function ChatPage() {
                               <p
                                 className={`font-medium truncate ${
                                   selectedTaskId === conv.taskId
-                                    ? "text-white"
-                                    : "text-gray-900"
+                                    ? 'text-white'
+                                    : 'text-gray-900'
                                 }`}
                               >
                                 {conv.otherParty.name}
@@ -162,8 +162,8 @@ export default function ChatPage() {
                                 <Badge
                                   variant={
                                     selectedTaskId === conv.taskId
-                                      ? "secondary"
-                                      : "default"
+                                      ? 'secondary'
+                                      : 'default'
                                   }
                                   className="ml-2"
                                 >
@@ -174,22 +174,24 @@ export default function ChatPage() {
                             <p
                               className={`text-xs truncate ${
                                 selectedTaskId === conv.taskId
-                                  ? "text-white/80"
-                                  : "text-gray-500"
+                                  ? 'text-white/80'
+                                  : 'text-gray-500'
                               }`}
                             >
-                              {conv.latestMessage.contentType === "IMAGE"
-                                ? "📷 Image"
+                              {conv.latestMessage.contentType === 'IMAGE'
+                                ? '📷 Image'
                                 : conv.latestMessage.content.length > 30
-                                ? conv.latestMessage.content.substring(0, 30) +
-                                  "..."
-                                : conv.latestMessage.content}
+                                  ? conv.latestMessage.content.substring(
+                                      0,
+                                      30
+                                    ) + '...'
+                                  : conv.latestMessage.content}
                             </p>
                             <p
                               className={`text-xs mt-1 ${
                                 selectedTaskId === conv.taskId
-                                  ? "text-white/60"
-                                  : "text-gray-400"
+                                  ? 'text-white/60'
+                                  : 'text-gray-400'
                               }`}
                             >
                               {new Date(
@@ -202,12 +204,22 @@ export default function ChatPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No conversations yet</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Start chatting when you have active tasks
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-purple-50 mb-4">
+                      <MessageSquare className="h-10 w-10 text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No conversations yet
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Start chatting when you have active bookings or tasks.
                     </p>
+                    <Link
+                      href="/services"
+                      className="inline-flex items-center text-sm font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                    >
+                      Browse Services →
+                    </Link>
                   </div>
                 )}
               </Card>
@@ -236,4 +248,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
