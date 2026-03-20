@@ -83,3 +83,71 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+/**
+ * PATCH /api/admin/stewards
+ * Update steward status (APPROVED, REJECTED, etc.)
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    await requireRole('ADMIN');
+
+    const body = await req.json();
+    const { stewardId, status } = body;
+
+    if (!stewardId || !status) {
+      return NextResponse.json(
+        { error: 'stewardId and status are required' },
+        { status: 400 }
+      );
+    }
+
+    const validStatuses = [
+      'APPLIED',
+      'UNDER_REVIEW',
+      'APPROVED',
+      'REJECTED',
+      'SUSPENDED',
+    ];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    }
+
+    const updated = await prisma.stewardProfile.update({
+      where: { id: stewardId },
+      data: { status },
+      include: {
+        user: {
+          select: { name: true, email: true },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: updated.id,
+        name: updated.user.name,
+        email: updated.user.email,
+        status: updated.status,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error updating steward:', error);
+
+    if (
+      error.message?.includes('Unauthorized') ||
+      error.message?.includes('ADMIN')
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, error: 'Failed to update steward' },
+      { status: 500 }
+    );
+  }
+}
