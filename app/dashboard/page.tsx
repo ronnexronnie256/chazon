@@ -7,8 +7,6 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
   Calendar,
-  Clock,
-  MapPin,
   CheckCircle,
   XCircle,
   Clock3,
@@ -17,13 +15,24 @@ import {
   BookOpen,
   Star,
   Wallet,
-  CalendarDays,
   TrendingUp,
+  Plus,
+  ArrowRight,
+  CalendarCheck,
+  MessageSquare,
+  Award,
+  Briefcase,
+  Clock,
+  RefreshCw,
   Lightbulb,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useBookingsStore } from '@/store/bookings';
 import { TermsBanner } from '@/components/ui/terms-banner';
+import { StatCard, ActivityCard } from '@/components/ui/stat-card';
+import { StatusBadge } from '@/components/ui/badge';
+import { toast } from 'react-hot-toast';
 import Image from 'next/image';
 
 function useUserData() {
@@ -147,196 +156,149 @@ export default function DashboardPage() {
       <Header />
       <main className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex justify-between items-end">
+          {/* Page Header */}
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Welcome back, {user.name}! Here's an overview of your account.
+                Welcome back, {user.name}! 👋
               </p>
             </div>
-            {isSteward && (
-              <Link href="/dashboard/services/create">
-                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-chazon-primary text-primary-foreground hover:bg-chazon-primary/90 h-10 px-4 py-2 text-white shadow-sm">
-                  + Add Service
-                </div>
-              </Link>
-            )}
+            <div className="flex items-center gap-3">
+              {isSteward && (
+                <Link href="/dashboard/services/create">
+                  <button className="inline-flex items-center gap-2 px-4 py-2 bg-chazon-primary text-white rounded-lg hover:bg-chazon-primary/90 transition-colors shadow-sm">
+                    <Plus className="h-4 w-4" />
+                    Add Service
+                  </button>
+                </Link>
+              )}
+              <button
+                onClick={() => window.location.reload()}
+                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+              >
+                <RefreshCw className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
           </div>
 
           {/* Quick Stats */}
           <div
-            className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${isSteward ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} mb-8`}
+            className={`grid grid-cols-2 sm:grid-cols-2 ${isSteward ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 lg:gap-6 mb-8`}
           >
-            <div className="bg-white overflow-hidden shadow rounded-lg">
+            {/* Profile Card */}
+            <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200 cursor-pointer">
+              <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
               <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <User className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Profile
-                      </dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">
-                          {isSteward ? 'Steward' : 'Customer'}
-                        </div>
-                      </dd>
-                    </dl>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                    <User className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
-              </div>
-              <div className="bg-gray-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link
-                    href="/profile"
-                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
-                  >
-                    View profile
-                  </Link>
-                </div>
+                <p className="text-sm font-medium text-gray-500 mb-1">
+                  Account Type
+                </p>
+                <p className="text-xl font-bold text-gray-900">
+                  {isSteward ? 'Steward' : 'Client'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Tap to view profile
+                </p>
               </div>
             </div>
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <BookOpen className="h-6 w-6 text-gray-400" />
+            {/* Bookings Card */}
+            <Link href="/bookings">
+              <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-purple-200 cursor-pointer">
+                <div className="h-1 bg-gradient-to-r from-purple-500 to-purple-600" />
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-xl bg-purple-50 group-hover:bg-purple-100 transition-colors">
+                      <BookOpen className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Bookings
-                      </dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">
-                          {bookings.length} Recent
-                        </div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link
-                    href="/bookings"
-                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
-                  >
+                  <p className="text-sm font-medium text-gray-500 mb-1">
+                    Bookings
+                  </p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {bookings.length} Total
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
                     View all bookings
-                  </Link>
+                  </p>
                 </div>
               </div>
-            </div>
+            </Link>
 
             {isSteward && (
               <>
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <Wallet className="h-6 w-6 text-green-600" />
+                {/* Wallet Card */}
+                <Link href="/dashboard/wallet">
+                  <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-green-200 cursor-pointer">
+                    <div className="h-1 bg-gradient-to-r from-green-500 to-green-600" />
+                    <div className="p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 rounded-xl bg-green-50 group-hover:bg-green-100 transition-colors">
+                          <Wallet className="h-5 w-5 text-green-600" />
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-green-600 transition-colors" />
                       </div>
-                      <div className="ml-5 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">
-                            Wallet Balance
-                          </dt>
-                          <dd>
-                            <div className="text-lg font-medium text-gray-900">
-                              {loadingWallet
-                                ? '...'
-                                : walletBalance !== null
-                                  ? formatCurrency(
-                                      walletBalance,
-                                      walletCurrency
-                                    )
-                                  : '—'}
-                            </div>
-                          </dd>
-                        </dl>
-                      </div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">
+                        Wallet Balance
+                      </p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {loadingWallet
+                          ? '...'
+                          : walletBalance !== null
+                            ? formatCurrency(walletBalance, walletCurrency)
+                            : '—'}
+                      </p>
                     </div>
                   </div>
-                  <div className="bg-gray-50 px-5 py-3">
-                    <div className="text-sm">
-                      <Link
-                        href="/dashboard/wallet"
-                        className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
-                      >
-                        View wallet
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                </Link>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <Star className="h-6 w-6 text-gray-400" />
+                {/* Rating Card */}
+                <Link href="/profile">
+                  <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-yellow-200 cursor-pointer">
+                    <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-600" />
+                    <div className="p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 rounded-xl bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                          <Star className="h-5 w-5 text-yellow-600" />
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-yellow-600 transition-colors" />
                       </div>
-                      <div className="ml-5 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">
-                            Rating
-                          </dt>
-                          <dd>
-                            <div className="text-lg font-medium text-gray-900">
-                              {user.rating?.toFixed(1) || 'New'}
-                            </div>
-                          </dd>
-                        </dl>
-                      </div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">
+                        Rating
+                      </p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {user.rating?.toFixed(1) || 'New'}
+                      </p>
                     </div>
                   </div>
-                  <div className="bg-gray-50 px-5 py-3">
-                    <div className="text-sm">
-                      <Link
-                        href="/profile"
-                        className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
-                      >
-                        View reviews
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                </Link>
               </>
             )}
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Settings className="h-6 w-6 text-gray-400" />
+            {/* Settings Card */}
+            <Link href="/settings">
+              <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-gray-300 cursor-pointer">
+                <div className="h-1 bg-gradient-to-r from-gray-400 to-gray-500" />
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-xl bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                      <Settings className="h-5 w-5 text-gray-600" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Account
-                      </dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">
-                          Settings
-                        </div>
-                      </dd>
-                    </dl>
-                  </div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">
+                    Settings
+                  </p>
+                  <p className="text-xl font-bold text-gray-900">Account</p>
                 </div>
               </div>
-              <div className="bg-gray-50 px-5 py-3">
-                <div className="text-sm">
-                  <Link
-                    href="/settings"
-                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
-                  >
-                    Manage account
-                  </Link>
-                </div>
-              </div>
-            </div>
+            </Link>
           </div>
 
           {/* Recent Bookings */}

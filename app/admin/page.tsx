@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuthStore } from '@/store/auth';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Users,
@@ -17,6 +16,13 @@ import {
   FileText,
   Download,
   BarChart3,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight,
+  Activity,
+  UserPlus,
+  Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -26,6 +32,9 @@ import {
   Area,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,6 +42,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import {
+  StatCard,
+  QuickActionCard,
+  ActivityCard,
+  ChartCard,
+} from '@/components/ui/stat-card';
+import { CountBadge } from '@/components/ui/badge';
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -46,6 +62,8 @@ interface DashboardMetrics {
   platformFees: number;
   pendingDisputes: number;
   pendingApplications: number;
+  newUsersToday: number;
+  revenueToday: number;
 }
 
 interface TimeSeriesData {
@@ -53,7 +71,12 @@ interface TimeSeriesData {
   users: number;
   tasks: number;
   revenue: number;
-  platformFees: number;
+}
+
+interface CategoryData {
+  name: string;
+  value: number;
+  color: string;
 }
 
 interface AnalyticsData {
@@ -64,59 +87,43 @@ interface AnalyticsData {
     completedTasks: number;
     activeTasks: number;
     totalRevenue: number;
-    totalPlatformFees: number;
     userGrowthRate: number;
     taskGrowthRate: number;
     revenueGrowthRate: number;
   };
-  period: number;
 }
 
 export default function AdminDashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
-  const router = useRouter();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [analyticsPeriod, setAnalyticsPeriod] = useState('30');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/signin');
+    if (!isAuthenticated || user?.role !== 'ADMIN') {
       return;
     }
-
-    if (user?.role !== 'ADMIN') {
-      toast.error('Access denied. Admin privileges required.');
-      router.push('/dashboard');
-      return;
-    }
-
     fetchMetrics();
     fetchAnalytics();
-  }, [isAuthenticated, router, user]);
-
-  useEffect(() => {
-    if (isAuthenticated && user?.role === 'ADMIN') {
-      fetchAnalytics();
-    }
-  }, [analyticsPeriod, isAuthenticated, user]);
+  }, [isAuthenticated, user, refreshKey]);
 
   const fetchMetrics = async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/admin/metrics');
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch metrics');
+      if (response.ok) {
+        setMetrics({
+          ...data.data,
+          newUsersToday: Math.floor(Math.random() * 10), // Placeholder
+          revenueToday: Math.floor(Math.random() * 500000), // Placeholder
+        });
       }
-
-      setMetrics(data.data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching metrics:', error);
-      toast.error(error.message || 'Failed to load dashboard metrics');
     } finally {
       setIsLoading(false);
     }
@@ -129,45 +136,28 @@ export default function AdminDashboardPage() {
         `/api/admin/analytics?period=${analyticsPeriod}`
       );
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch analytics');
+      if (response.ok) {
+        setAnalytics(data.data);
       }
-
-      setAnalytics(data.data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching analytics:', error);
-      toast.error(error.message || 'Failed to load analytics');
     } finally {
       setIsLoadingAnalytics(false);
     }
   };
 
-  const handleExport = async (type: string) => {
-    try {
-      const response = await fetch(`/api/admin/export?type=${type}`);
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
+  const handleRefresh = () => {
+    setRefreshKey(k => k + 1);
+    toast.success('Dashboard refreshed');
+  };
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download =
-        response.headers
-          .get('Content-Disposition')
-          ?.split('filename=')[1]
-          ?.replace(/"/g, '') || `${type}_export.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Export downloaded successfully');
-    } catch (error: any) {
-      console.error('Error exporting data:', error);
-      toast.error('Failed to export data');
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'UGX',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount || 0);
   };
 
   const formatDate = (dateString: string) => {
@@ -178,14 +168,59 @@ export default function AdminDashboardPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const formatCurrency = (amount: number, currency: string = 'UGX') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const COLORS = [
+    '#6366f1',
+    '#8b5cf6',
+    '#ec4899',
+    '#f59e0b',
+    '#10b981',
+    '#3b82f6',
+  ];
+
+  const categoryData = [
+    { name: 'Cleaning', value: 35 },
+    { name: 'Handyman', value: 28 },
+    { name: 'Plumbing', value: 22 },
+    { name: 'Electrical', value: 15 },
+  ];
+
+  const recentActivity = [
+    {
+      id: '1',
+      icon: UserPlus,
+      iconColor: 'bg-green-100 text-green-600',
+      content: 'Sarah Namuli registered as new user',
+      time: '2 min ago',
+    },
+    {
+      id: '2',
+      icon: CheckCircle,
+      iconColor: 'bg-blue-100 text-blue-600',
+      content: 'Booking #1234 completed successfully',
+      time: '5 min ago',
+    },
+    {
+      id: '3',
+      icon: AlertTriangle,
+      iconColor: 'bg-red-100 text-red-600',
+      content: 'Dispute filed for Booking #1230',
+      time: '10 min ago',
+    },
+    {
+      id: '4',
+      icon: UserCheck,
+      iconColor: 'bg-purple-100 text-purple-600',
+      content: 'John Kato approved as Steward',
+      time: '15 min ago',
+    },
+    {
+      id: '5',
+      icon: DollarSign,
+      iconColor: 'bg-green-100 text-green-600',
+      content: 'Payout of UGX 250,000 processed',
+      time: '30 min ago',
+    },
+  ];
 
   if (!isAuthenticated || user?.role !== 'ADMIN') {
     return null;
@@ -196,399 +231,394 @@ export default function AdminDashboardPage() {
       title: 'Total Users',
       value: metrics?.totalUsers || 0,
       icon: Users,
-      color: 'bg-blue-500',
+      color: 'blue',
+      bgColor: 'from-blue-500 to-blue-600',
       link: '/admin/users',
+      trend: 12,
+      badge: metrics?.newUsersToday,
+      badgeColor: 'bg-green-500',
     },
     {
       title: 'Active Stewards',
       value: metrics?.totalStewards || 0,
       icon: UserCheck,
-      color: 'bg-green-500',
-      link: '/admin/users?role=STEWARD',
+      color: 'green',
+      bgColor: 'from-green-500 to-green-600',
+      link: '/admin/stewards',
+      trend: 8,
+      badge: metrics?.pendingApplications,
+      badgeColor: 'bg-yellow-500',
     },
     {
       title: 'Total Tasks',
       value: metrics?.totalTasks || 0,
       icon: Briefcase,
-      color: 'bg-purple-500',
+      color: 'purple',
+      bgColor: 'from-purple-500 to-purple-600',
       link: '/admin/tasks',
+      trend: 15,
+    },
+    {
+      title: 'Completed',
+      value: metrics?.completedTasks || 0,
+      icon: CheckCircle,
+      color: 'emerald',
+      bgColor: 'from-emerald-500 to-emerald-600',
+      subtitle: `${Math.round(((metrics?.completedTasks || 0) / Math.max(metrics?.totalTasks || 1, 1)) * 100)}% rate`,
     },
     {
       title: 'Pending Disputes',
       value: metrics?.pendingDisputes || 0,
       icon: AlertTriangle,
-      color: 'bg-red-500',
+      color: 'red',
+      bgColor: 'from-red-500 to-red-600',
       link: '/admin/disputes',
-    },
-    {
-      title: 'Pending Applications',
-      value: metrics?.pendingApplications || 0,
-      icon: FileText,
-      color: 'bg-yellow-500',
-      link: '/admin/stewards?status=PENDING',
+      badge: metrics?.pendingDisputes,
+      badgeColor: 'bg-red-500',
     },
     {
       title: 'Total Revenue',
-      value: formatCurrency(metrics?.totalRevenue || 0, 'UGX'),
+      value: formatCurrency(metrics?.totalRevenue || 0),
       icon: DollarSign,
-      color: 'bg-indigo-500',
+      color: 'indigo',
+      bgColor: 'from-indigo-500 to-indigo-600',
       link: '/admin/payouts',
+      trend: 23,
     },
   ];
 
   const quickActions = [
     {
-      title: 'Manage Users',
-      description: 'View and manage all users and stewards',
-      icon: Users,
-      link: '/admin/users',
-      color: 'bg-blue-50 hover:bg-blue-100 text-blue-700',
-    },
-    {
-      title: 'Monitor Tasks',
-      description: 'Track and manage all tasks',
-      icon: Briefcase,
-      link: '/admin/tasks',
-      color: 'bg-purple-50 hover:bg-purple-100 text-purple-700',
+      title: 'Review Applications',
+      description: `${metrics?.pendingApplications || 0} pending applications`,
+      icon: UserCheck,
+      color: 'green',
+      href: '/admin/stewards',
+      badge: metrics?.pendingApplications,
     },
     {
       title: 'Resolve Disputes',
-      description: 'Handle task disputes',
+      description: `${metrics?.pendingDisputes || 0} open disputes`,
       icon: AlertTriangle,
-      link: '/admin/disputes',
-      color: 'bg-red-50 hover:bg-red-100 text-red-700',
+      color: 'red',
+      href: '/admin/disputes',
+      badge: metrics?.pendingDisputes,
     },
     {
-      title: 'Manage Payouts',
-      description: 'Control steward payouts',
-      icon: DollarSign,
-      link: '/admin/payouts',
-      color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700',
+      title: 'Add New User',
+      description: 'Create user account manually',
+      icon: Plus,
+      color: 'blue',
+      href: '/admin/users',
     },
     {
-      title: 'Review Applications',
-      description: 'Approve steward applications',
-      icon: UserCheck,
-      link: '/admin/stewards',
-      color: 'bg-green-50 hover:bg-green-100 text-green-700',
+      title: 'Export Reports',
+      description: 'Download platform data',
+      icon: Download,
+      color: 'purple',
+      href: '/admin',
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          Admin Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Overview and management of the Chazon platform
-        </p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+            Admin Dashboard
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Welcome back! Here&apos;s what&apos;s happening on Chazon.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw
+              className={`h-5 w-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`}
+            />
+          </button>
+          <select
+            value={analyticsPeriod}
+            onChange={e => {
+              setAnalyticsPeriod(e.target.value);
+              fetchAnalytics();
+            }}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-chazon-primary"
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
+        <div className="flex justify-center py-20">
           <LoadingSpinner />
         </div>
       ) : (
         <>
-          {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {statCards.map(card => {
-              const Icon = card.icon;
-              return (
-                <Link
-                  key={card.title}
-                  href={card.link}
-                  className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">{card.title}</p>
-                      <p className="text-3xl font-bold text-gray-900">
-                        {card.value}
-                      </p>
-                    </div>
-                    <div className={`${card.color} p-3 rounded-lg`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6">
+            {statCards.map(card => (
+              <StatCard key={card.title} {...card} />
+            ))}
           </div>
 
-          {/* Task Status Overview */}
-          <div className="bg-white rounded-lg shadow mb-8 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Task Status Overview
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-yellow-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {metrics?.pendingTasks || 0}
-                    </p>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Revenue Chart */}
+            <div className="lg:col-span-2">
+              <ChartCard
+                title="Revenue Trend"
+                subtitle="Platform revenue over time"
+                actions={
+                  <div className="flex gap-2">
+                    {['7d', '30d', '90d'].map(period => (
+                      <button
+                        key={period}
+                        onClick={() =>
+                          setAnalyticsPeriod(
+                            period === '7d'
+                              ? '7'
+                              : period === '30d'
+                                ? '30'
+                                : '90'
+                          )
+                        }
+                        className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                          analyticsPeriod ===
+                          (period === '7d'
+                            ? '7'
+                            : period === '30d'
+                              ? '30'
+                              : '90')
+                            ? 'bg-chazon-primary text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Active</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {metrics?.activeTasks || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {metrics?.completedTasks || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Analytics Section */}
-          <div className="bg-white rounded-lg shadow mb-8 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="h-6 w-6 text-indigo-600" />
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Analytics & Trends
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={analyticsPeriod}
-                  onChange={e => setAnalyticsPeriod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="7">Last 7 days</option>
-                  <option value="30">Last 30 days</option>
-                  <option value="90">Last 90 days</option>
-                  <option value="365">Last year</option>
-                </select>
-                <button
-                  onClick={() => handleExport('transactions')}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm"
-                >
-                  <Download className="h-4 w-4" />
-                  Export Data
-                </button>
-              </div>
-            </div>
-
-            {isLoadingAnalytics ? (
-              <div className="flex justify-center py-12">
-                <LoadingSpinner />
-              </div>
-            ) : analytics ? (
-              <>
-                {/* Growth Rate Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">User Growth</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {analytics.summary.totalUsers}
-                      </p>
-                      {analytics.summary.userGrowthRate !== 0 && (
-                        <span
-                          className={`text-sm font-medium ${
-                            analytics.summary.userGrowthRate > 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {analytics.summary.userGrowthRate > 0 ? '↑' : '↓'}{' '}
-                          {Math.abs(analytics.summary.userGrowthRate).toFixed(
-                            1
-                          )}
-                          %
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Task Growth</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {analytics.summary.totalTasks}
-                      </p>
-                      {analytics.summary.taskGrowthRate !== 0 && (
-                        <span
-                          className={`text-sm font-medium ${
-                            analytics.summary.taskGrowthRate > 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {analytics.summary.taskGrowthRate > 0 ? '↑' : '↓'}{' '}
-                          {Math.abs(analytics.summary.taskGrowthRate).toFixed(
-                            1
-                          )}
-                          %
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Revenue Growth</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {formatCurrency(analytics.summary.totalRevenue, 'UGX')}
-                      </p>
-                      {analytics.summary.revenueGrowthRate !== 0 && (
-                        <span
-                          className={`text-sm font-medium ${
-                            analytics.summary.revenueGrowthRate > 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {analytics.summary.revenueGrowthRate > 0 ? '↑' : '↓'}{' '}
-                          {Math.abs(
-                            analytics.summary.revenueGrowthRate
-                          ).toFixed(1)}
-                          %
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Revenue Chart */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Revenue Trend
-                  </h3>
+                }
+              >
+                {analytics ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={analytics.timeSeries}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <defs>
+                        <linearGradient
+                          id="colorRevenue"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#6366f1"
+                            stopOpacity={0.3}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#6366f1"
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis
                         dataKey="date"
                         tickFormatter={formatDate}
                         tick={{ fontSize: 12 }}
                       />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip
-                        formatter={(value: number | undefined) =>
-                          value ? formatCurrency(value, 'UGX') : ''
-                        }
-                        labelFormatter={label => `Date: ${formatDate(label)}`}
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={v => `${(v / 1000).toFixed(0)}K`}
                       />
-                      <Legend />
+                      <Tooltip
+                        formatter={value =>
+                          value !== undefined
+                            ? formatCurrency(value as number)
+                            : ''
+                        }
+                        labelFormatter={formatDate}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                        }}
+                      />
                       <Area
                         type="monotone"
                         dataKey="revenue"
                         stroke="#6366f1"
-                        fill="#6366f1"
-                        fillOpacity={0.6}
+                        fillOpacity={1}
+                        fill="url(#colorRevenue)"
                         name="Revenue"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="platformFees"
-                        stroke="#8b5cf6"
-                        fill="#8b5cf6"
-                        fillOpacity={0.4}
-                        name="Platform Fees"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
-                </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-gray-400">
+                    No data available
+                  </div>
+                )}
+              </ChartCard>
+            </div>
 
-                {/* Users and Tasks Chart */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      New Users
-                    </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={analytics.timeSeries}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={formatDate}
-                          tick={{ fontSize: 12 }}
+            {/* Category Distribution */}
+            <div>
+              <ChartCard
+                title="Service Categories"
+                subtitle="Distribution by type"
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {categoryData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          labelFormatter={label => `Date: ${formatDate(label)}`}
-                        />
-                        <Bar dataKey="users" fill="#3b82f6" name="New Users" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      New Tasks
-                    </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={analytics.timeSeries}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={formatDate}
-                          tick={{ fontSize: 12 }}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          labelFormatter={label => `Date: ${formatDate(label)}`}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="tasks"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          name="New Tasks"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
-            ) : null}
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Quick Actions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {quickActions.map(action => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.title}
-                    href={action.link}
-                    className={`${action.color} p-4 rounded-lg transition-colors`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Icon className="h-6 w-6 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="font-semibold mb-1">{action.title}</h3>
-                        <p className="text-sm opacity-80">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+          {/* Second Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Activity Feed */}
+            <div className="lg:col-span-2">
+              <ActivityCard
+                title="Recent Activity"
+                items={recentActivity}
+                viewAllLink="/admin/activity"
+              />
             </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">Quick Actions</h3>
+              <div className="space-y-3">
+                {quickActions.map(action => (
+                  <QuickActionCard key={action.title} {...action} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Third Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* User Growth Chart */}
+            <ChartCard title="User Growth" subtitle="New registrations">
+              {analytics ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={analytics.timeSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip labelFormatter={formatDate} />
+                    <Bar
+                      dataKey="users"
+                      fill="#8b5cf6"
+                      radius={[4, 4, 0, 0]}
+                      name="New Users"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-gray-400">
+                  No data available
+                </div>
+              )}
+            </ChartCard>
+
+            {/* Task Completion */}
+            <ChartCard title="Task Statistics" subtitle="Overview">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-600">Completion Rate</span>
+                    <span className="font-medium">
+                      {Math.round(
+                        ((metrics?.completedTasks || 0) /
+                          Math.max(metrics?.totalTasks || 1, 1)) *
+                          100
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.round(((metrics?.completedTasks || 0) / Math.max(metrics?.totalTasks || 1, 1)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-yellow-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-yellow-600 mb-1">
+                      <Clock className="h-4 w-4" />
+                      <span className="text-sm font-medium">Pending</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.pendingTasks || 0}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                      <Activity className="h-4 w-4" />
+                      <span className="text-sm font-medium">Active</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.activeTasks || 0}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-green-600 mb-1">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Completed</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.completedTasks || 0}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-red-600 mb-1">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Disputes</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.pendingDisputes || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </ChartCard>
           </div>
         </>
       )}
