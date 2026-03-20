@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { LocationProvider } from '@/components/location-provider';
 import { ServicesContent } from '@/components/services-content';
+import { ServicesLoadingSkeleton } from '@/components/services-loading-skeleton';
 
 export default function ServicesPageWrapper() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
@@ -35,13 +35,12 @@ export default function ServicesPageWrapper() {
       {
         enableHighAccuracy: false,
         timeout: 5000,
-        maximumAge: 300000, // Cache for 5 minutes
+        maximumAge: 300000,
       }
     );
   }, []);
 
   useEffect(() => {
-    // Auto-request location on mount (non-blocking)
     requestLocation();
   }, [requestLocation]);
 
@@ -51,7 +50,9 @@ export default function ServicesPageWrapper() {
       status={locationStatus}
       onRequestLocation={requestLocation}
     >
-      <ServicesContent location={location} />
+      <Suspense fallback={<ServicesLoadingSkeleton />}>
+        <ServicesContent location={location} />
+      </Suspense>
     </LocationProvider>
   );
 }
