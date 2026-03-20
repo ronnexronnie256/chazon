@@ -10,27 +10,41 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Force update role to ADMIN
-    const updated = await prisma.user.update({
+    // Check if user exists
+    let dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      data: { role: 'ADMIN' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-      },
+      select: { id: true, email: true, name: true, role: true },
     });
+
+    if (!dbUser) {
+      // Create the user first with minimal required fields
+      dbUser = await prisma.user.create({
+        data: {
+          id: user.id,
+          name: user.name || 'Admin User',
+          email: user.email || 'admin@chazon.com',
+          role: 'ADMIN',
+        },
+        select: { id: true, email: true, name: true, role: true },
+      });
+    } else if (dbUser.role !== 'ADMIN') {
+      // Update role to ADMIN
+      dbUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' },
+        select: { id: true, email: true, name: true, role: true },
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Role updated to ADMIN',
-      user: updated,
+      message: 'You are now an ADMIN',
+      user: dbUser,
     });
   } catch (error) {
-    console.error('Fix role error:', error);
+    console.error('Fix admin error:', error);
     return NextResponse.json(
-      { error: 'Failed to update role', details: (error as Error).message },
+      { error: 'Failed', details: (error as Error).message },
       { status: 500 }
     );
   }
