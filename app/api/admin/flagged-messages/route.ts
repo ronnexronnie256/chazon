@@ -21,12 +21,28 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const senderIds = [...new Set(flaggedMessages.map(m => m.senderId))];
-    const senders = await prisma.user.findMany({
-      where: { id: { in: senderIds } },
-      select: { id: true, name: true, email: true },
-    });
-    const senderMap = new Map(senders.map(s => [s.id, s]));
+    // Get unique sender IDs
+    const senderIdSet = new Set<string>();
+    for (const msg of flaggedMessages) {
+      senderIdSet.add(msg.senderId);
+    }
+    const senderIds = Array.from(senderIdSet);
+
+    const senders =
+      senderIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: senderIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [];
+
+    const senderMap = new Map<
+      string,
+      { id: string; name: string; email: string | null }
+    >();
+    for (const s of senders) {
+      senderMap.set(s.id, s);
+    }
 
     const messagesWithSenders = flaggedMessages.map(msg => ({
       ...msg,
