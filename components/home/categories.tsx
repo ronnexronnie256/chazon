@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
+import Link from 'next/link';
 import {
   Wrench,
   Truck,
@@ -16,26 +16,27 @@ import {
   Camera,
   LucideIcon,
   HelpCircle,
-} from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 // This type definition should match the data structure from the API
 export type CategoryWithCount = {
-  id: string
-  name: string
-  description: string | null
-  slug: string
-  icon: string | null
+  id: string;
+  name: string;
+  description: string | null;
+  slug: string;
+  icon: string | null;
   _count: {
-    services: number
-  }
-}
+    services: number;
+  };
+};
 
 // Map icon slugs to Lucide components
 const iconMap: { [key: string]: LucideIcon } = {
-  handyman: Hammer,
-  moving: Truck,
   cleaning: Sparkles,
+  handyman: Hammer,
+  plumbing: Wrench,
+  moving: Truck,
   'furniture-assembly': Wrench,
   'tv-mounting': Tv,
   delivery: Package,
@@ -46,7 +47,7 @@ const iconMap: { [key: string]: LucideIcon } = {
   'personal-care': Scissors,
   photography: Camera,
   default: HelpCircle,
-}
+};
 
 // Pre-defined colors for category cards
 const colors = [
@@ -62,10 +63,10 @@ const colors = [
   'bg-teal-500',
   'bg-rose-500',
   'bg-cyan-500',
-]
+];
 
 interface CategoriesProps {
-  categories: CategoryWithCount[]
+  categories: CategoryWithCount[];
 }
 
 export function Categories({ categories }: CategoriesProps) {
@@ -83,8 +84,8 @@ export function Categories({ categories }: CategoriesProps) {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
           {categories.map((category, index) => {
-            const IconComponent = iconMap[category.slug] || iconMap.default
-            const color = colors[index % colors.length]
+            const IconComponent = iconMap[category.slug] || iconMap.default;
+            const color = colors[index % colors.length];
             return (
               <Link
                 key={category.id}
@@ -110,7 +111,7 @@ export function Categories({ categories }: CategoriesProps) {
                   </CardContent>
                 </Card>
               </Link>
-            )
+            );
           })}
         </div>
 
@@ -137,5 +138,5 @@ export function Categories({ categories }: CategoriesProps) {
         </div>
       </div>
     </section>
-  )
+  );
 }

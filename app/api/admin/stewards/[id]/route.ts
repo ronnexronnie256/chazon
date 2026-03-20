@@ -2,9 +2,9 @@
  * Admin API routes for individual steward management
  * Only accessible to ADMIN users
  */
-import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/clerk/auth'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { requireRole } from '@/lib/supabase/auth';
+import { prisma } from '@/lib/prisma';
 
 /**
  * PATCH /api/admin/stewards/[id]
@@ -17,30 +17,33 @@ export async function PATCH(
 ) {
   try {
     // Require admin role
-    await requireRole('ADMIN')
+    await requireRole('ADMIN');
 
-    const { id } = await params
-    const body = await req.json()
-    const { action, reason } = body
+    const { id } = await params;
+    const body = await req.json();
+    const { action, reason } = body;
 
     if (!action || !['approve', 'reject'].includes(action)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid action. Must be "approve" or "reject"' },
+        {
+          success: false,
+          error: 'Invalid action. Must be "approve" or "reject"',
+        },
         { status: 400 }
-      )
+      );
     }
 
     // Get steward profile
     const stewardProfile = await prisma.stewardProfile.findUnique({
       where: { id },
       include: { user: true },
-    })
+    });
 
     if (!stewardProfile) {
       return NextResponse.json(
         { success: false, error: 'Steward profile not found' },
         { status: 404 }
-      )
+      );
     }
 
     // Update based on action
@@ -59,7 +62,7 @@ export async function PATCH(
             role: 'STEWARD',
           },
         }),
-      ])
+      ]);
 
       return NextResponse.json({
         success: true,
@@ -72,7 +75,7 @@ export async function PATCH(
             role: 'STEWARD',
           },
         },
-      })
+      });
     } else {
       // Reject: Set status to REJECTED, keep role as CLIENT
       await prisma.stewardProfile.update({
@@ -80,7 +83,7 @@ export async function PATCH(
         data: {
           backgroundCheckStatus: 'REJECTED',
         },
-      })
+      });
 
       return NextResponse.json({
         success: true,
@@ -89,22 +92,25 @@ export async function PATCH(
           ...stewardProfile,
           backgroundCheckStatus: 'REJECTED',
         },
-      })
+      });
     }
   } catch (error: any) {
-    console.error('Error updating steward application:', error)
-    
-    if (error.message?.includes('Unauthorized') || error.message?.includes('ADMIN')) {
+    console.error('Error updating steward application:', error);
+
+    if (
+      error.message?.includes('Unauthorized') ||
+      error.message?.includes('ADMIN')
+    ) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Admin access required.' },
         { status: 403 }
-      )
+      );
     }
 
     return NextResponse.json(
       { success: false, error: 'Failed to update steward application' },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -118,9 +124,9 @@ export async function GET(
 ) {
   try {
     // Require admin role
-    await requireRole('ADMIN')
+    await requireRole('ADMIN');
 
-    const { id } = await params
+    const { id } = await params;
 
     const stewardProfile = await prisma.stewardProfile.findUnique({
       where: { id },
@@ -139,32 +145,35 @@ export async function GET(
           },
         },
       },
-    })
+    });
 
     if (!stewardProfile) {
       return NextResponse.json(
         { success: false, error: 'Steward profile not found' },
         { status: 404 }
-      )
+      );
     }
 
     return NextResponse.json({
       success: true,
       data: stewardProfile,
-    })
+    });
   } catch (error: any) {
-    console.error('Error fetching steward application:', error)
-    
-    if (error.message?.includes('Unauthorized') || error.message?.includes('ADMIN')) {
+    console.error('Error fetching steward application:', error);
+
+    if (
+      error.message?.includes('Unauthorized') ||
+      error.message?.includes('ADMIN')
+    ) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Admin access required.' },
         { status: 403 }
-      )
+      );
     }
 
     return NextResponse.json(
       { success: false, error: 'Failed to fetch steward application' },
       { status: 500 }
-    )
+    );
   }
 }

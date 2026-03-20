@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") // Connection pooling URL for regular queries
-  directUrl = env("DIRECT_URL") // Direct connection URL for migrations
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // User model for both Clients and Stewards
@@ -26,6 +25,8 @@ model User {
   role               Role     @default(CLIENT)
   isIdentityVerified Boolean  @default(false)
   trustedContact     Json? // Contact info for emergencies
+  termsAcceptedAt    DateTime? // When user accepted ToS
+  termsVersion       String? // Which version of ToS was accepted
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -378,12 +379,43 @@ model ChatMessage {
   content     String
   contentType String    @default("TEXT") // TEXT, IMAGE, LOCATION
   readAt      DateTime?
+  isFlagged   Boolean   @default(false) // Whether message violated guidelines
+  violations  Json?     // Array of violations detected
 
   createdAt DateTime @default(now())
 
   @@index([taskId])
   @@index([senderId])
   @@index([createdAt])
+  @@index([isFlagged])
+}
+
+// Flagged Message for admin review
+model FlaggedMessage {
+  id            String   @id @default(cuid())
+  messageId     String   @unique
+  senderId      String
+  recipientId   String?  // ID of the user who received the flagged message
+  taskId        String
+  originalContent String
+  violationType String   // PHONE_NUMBER, EMAIL, WHATSAPP, etc.
+  severity      ViolationSeverity @default(LOW)
+  reviewed      Boolean  @default(false)
+  reviewedBy    String?  // Admin who reviewed
+  reviewedAt    DateTime?
+  action        String?  // WARN, SUSPEND, BAN, DISMISSED
+
+  createdAt DateTime @default(now())
+
+  @@index([reviewed])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+enum ViolationSeverity {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 // Dispute

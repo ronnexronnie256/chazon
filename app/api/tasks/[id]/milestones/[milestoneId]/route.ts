@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getUser } from '@/lib/clerk/auth'
-import { prisma } from '@/lib/prisma'
-import { initiatePayment } from '@/lib/flutterwave'
+import { NextRequest, NextResponse } from 'next/server';
+import { getUser } from '@/lib/supabase/auth';
+import { prisma } from '@/lib/prisma';
+import { initiatePayment } from '@/lib/flutterwave';
 
 /**
  * PATCH /api/tasks/[id]/milestones/[milestoneId]
@@ -12,13 +12,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; milestoneId: string }> }
 ) {
   try {
-    const user = await getUser()
+    const user = await getUser();
     if (!user) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const { id, milestoneId } = await params
-    const body = await req.json()
+    const { id, milestoneId } = await params;
+    const body = await req.json();
 
     const task = await prisma.task.findUnique({
       where: { id },
@@ -26,10 +29,13 @@ export async function PATCH(
         client: true,
         milestones: true,
       },
-    })
+    });
 
     if (!task) {
-      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Task not found' },
+        { status: 404 }
+      );
     }
 
     const milestone = await prisma.paymentMilestone.findUnique({
@@ -41,22 +47,28 @@ export async function PATCH(
           },
         },
       },
-    })
+    });
 
     if (!milestone || milestone.taskId !== id) {
-      return NextResponse.json({ success: false, error: 'Milestone not found' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Milestone not found' },
+        { status: 404 }
+      );
     }
 
     // Check authorization
-    const isClient = task.clientId === user.id
-    const isSteward = task.stewardId === user.id
-    const isAdmin = user.role === 'ADMIN'
+    const isClient = task.clientId === user.id;
+    const isSteward = task.stewardId === user.id;
+    const isAdmin = user.role === 'ADMIN';
 
     if (!isClient && !isSteward && !isAdmin) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
     }
 
-    const { action } = body
+    const { action } = body;
 
     if (action === 'pay') {
       // Client initiates payment for milestone
@@ -64,7 +76,7 @@ export async function PATCH(
         return NextResponse.json(
           { success: false, error: 'Only clients can pay milestones' },
           { status: 403 }
-        )
+        );
       }
 
       // Check if milestone is already paid
@@ -72,7 +84,7 @@ export async function PATCH(
         return NextResponse.json(
           { success: false, error: 'Milestone is already paid' },
           { status: 400 }
-        )
+        );
       }
 
       // Check if there's already a pending or completed transaction
@@ -81,14 +93,14 @@ export async function PATCH(
           milestoneId: milestoneId,
           status: { in: ['PENDING', 'COMPLETED'] },
         },
-      })
+      });
 
       if (existingTransaction) {
         if (existingTransaction.status === 'COMPLETED') {
           return NextResponse.json(
             { success: false, error: 'Milestone is already paid' },
             { status: 400 }
-          )
+          );
         }
         // Return existing payment link if pending
         return NextResponse.json({
@@ -97,11 +109,11 @@ export async function PATCH(
             transactionId: existingTransaction.id,
             message: 'Payment already initiated',
           },
-        })
+        });
       }
 
       // Create transaction record
-      const platformFee = milestone.amount * 0.1 // 10% platform fee
+      const platformFee = milestone.amount * 0.1; // 10% platform fee
       const transaction = await prisma.transaction.create({
         data: {
           taskId: id,
@@ -115,12 +127,12 @@ export async function PATCH(
             milestoneName: milestone.name,
           },
         },
-      })
+      });
 
       // Initiate payment with Flutterwave
-      const url = new URL(req.url)
-      const baseUrl = `${url.protocol}//${url.host}`
-      const redirectUrl = `${baseUrl}/api/payments/verify?milestoneId=${milestoneId}`
+      const url = new URL(req.url);
+      const baseUrl = `${url.protocol}//${url.host}`;
+      const redirectUrl = `${baseUrl}/api/payments/verify?milestoneId=${milestoneId}`;
 
       const flwResponse = await initiatePayment({
         tx_ref: transaction.id,
@@ -136,7 +148,7 @@ export async function PATCH(
           description: `Payment for milestone: ${milestone.name}`,
           logo: 'https://chazon.com/logo.png',
         },
-      })
+      });
 
       if (flwResponse.status === 'success' && flwResponse.data?.link) {
         return NextResponse.json({
@@ -145,29 +157,37 @@ export async function PATCH(
             transactionId: transaction.id,
             paymentLink: flwResponse.data.link,
           },
-        })
+        });
       } else {
         return NextResponse.json(
           { success: false, error: 'Failed to initiate payment' },
           { status: 500 }
-        )
+        );
       }
     } else if (action === 'complete') {
       // Steward marks milestone as complete
       if (!isSteward && !isAdmin) {
         return NextResponse.json(
-          { success: false, error: 'Only stewards can mark milestones as complete' },
+          {
+            success: false,
+            error: 'Only stewards can mark milestones as complete',
+          },
           { status: 403 }
-        )
+        );
       }
 
       // Check if milestone is paid
-      const paidTransaction = milestone.transactions.find((t) => t.status === 'COMPLETED')
+      const paidTransaction = milestone.transactions.find(
+        t => t.status === 'COMPLETED'
+      );
       if (!paidTransaction) {
         return NextResponse.json(
-          { success: false, error: 'Milestone must be paid before it can be marked as complete' },
+          {
+            success: false,
+            error: 'Milestone must be paid before it can be marked as complete',
+          },
           { status: 400 }
-        )
+        );
       }
 
       // Update milestone status
@@ -177,23 +197,23 @@ export async function PATCH(
           status: 'COMPLETED',
           completedAt: new Date(),
         },
-      })
+      });
 
       return NextResponse.json({
         success: true,
         data: updatedMilestone,
-      })
+      });
     } else {
       return NextResponse.json(
         { success: false, error: 'Invalid action' },
         { status: 400 }
-      )
+      );
     }
   } catch (error: any) {
-    console.error('Error updating milestone:', error)
+    console.error('Error updating milestone:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to update milestone' },
       { status: 500 }
-    )
+    );
   }
 }

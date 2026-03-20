@@ -2,9 +2,9 @@
  * Admin API routes for steward management
  * Only accessible to ADMIN users
  */
-import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/clerk/auth'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { requireRole } from '@/lib/supabase/auth';
+import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/admin/stewards
@@ -14,18 +14,18 @@ import { prisma } from '@/lib/prisma'
 export async function GET(req: NextRequest) {
   try {
     // Require admin role
-    await requireRole('ADMIN')
+    await requireRole('ADMIN');
 
-    const { searchParams } = new URL(req.url)
-    const status = searchParams.get('status') // PENDING, CLEARED, REJECTED
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const skip = (page - 1) * limit
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status'); // PENDING, CLEARED, REJECTED
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {}
+    const where: any = {};
     if (status) {
-      where.backgroundCheckStatus = status
+      where.backgroundCheckStatus = status;
     }
 
     // Get steward profiles with user data
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         take: limit,
       }),
       prisma.stewardProfile.count({ where }),
-    ])
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -63,20 +63,23 @@ export async function GET(req: NextRequest) {
           totalPages: Math.ceil(total / limit),
         },
       },
-    })
+    });
   } catch (error: any) {
-    console.error('Error fetching steward applications:', error)
-    
-    if (error.message?.includes('Unauthorized') || error.message?.includes('ADMIN')) {
+    console.error('Error fetching steward applications:', error);
+
+    if (
+      error.message?.includes('Unauthorized') ||
+      error.message?.includes('ADMIN')
+    ) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Admin access required.' },
         { status: 403 }
-      )
+      );
     }
 
     return NextResponse.json(
       { success: false, error: 'Failed to fetch steward applications' },
       { status: 500 }
-    )
+    );
   }
 }

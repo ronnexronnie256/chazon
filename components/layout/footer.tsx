@@ -1,19 +1,30 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useState } from 'react'
+import Link from 'next/link';
+import {
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Mail,
+  Phone,
+  MapPin,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useState } from 'react';
 
 const footerLinks = {
   services: [
-    { name: 'Furniture Assembly', href: '/services?category=furniture-assembly' },
+    {
+      name: 'Furniture Assembly',
+      href: '/services?category=furniture-assembly',
+    },
     { name: 'Moving Help', href: '/services?category=moving' },
     { name: 'Cleaning', href: '/services?category=cleaning' },
     { name: 'Handyman', href: '/services?category=handyman' },
     { name: 'TV Mounting', href: '/search?q=tv%20mounting' },
-    { name: 'Delivery', href: '/search?q=delivery' }
+    { name: 'Delivery', href: '/search?q=delivery' },
   ],
   company: [
     { name: 'About Us', href: '/' },
@@ -21,45 +32,49 @@ const footerLinks = {
     { name: 'Careers', href: '/' },
     { name: 'Press', href: '/' },
     { name: 'Blog', href: '/' },
-    { name: 'Contact', href: '/' }
+    { name: 'Contact', href: '/' },
   ],
   support: [
-    { name: 'Help Center', href: '/' },
-    { name: 'Safety', href: '/' },
-    { name: 'Trust & Safety', href: '/' },
-    { name: 'Terms of Service', href: '/' },
-    { name: 'Privacy Policy', href: '/' },
-    { name: 'Cookie Policy', href: '/' }
+    { name: 'Help Center', href: '/help' },
+    { name: 'Safety', href: '/safety' },
+    { name: 'Trust & Safety', href: '/trust' },
+    { name: 'Terms of Service', href: '/terms' },
+    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Cookie Policy', href: '/cookies' },
   ],
   stewards: [
     { name: 'Become a Steward', href: '/become-steward' },
     { name: 'Steward App', href: '/become-steward' },
     { name: 'Steward Resources', href: '/become-steward' },
     { name: 'Community Guidelines', href: '/become-steward' },
-    { name: 'Success Stories', href: '/become-steward#testimonials' }
-  ]
-}
+    { name: 'Success Stories', href: '/become-steward#testimonials' },
+  ],
+};
 
 const socialLinks = [
   { name: 'Facebook', icon: Facebook, href: 'https://facebook.com/chazon' },
   { name: 'Twitter', icon: Twitter, href: 'https://twitter.com/chazon' },
   { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/chazon' },
-  { name: 'LinkedIn', icon: Linkedin, href: 'https://linkedin.com/company/chazon' }
-]
+  {
+    name: 'LinkedIn',
+    icon: Linkedin,
+    href: 'https://linkedin.com/company/chazon',
+  },
+];
 
 export function Footer() {
-  const [email, setEmail] = useState('')
-  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [email, setEmail] = useState('');
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (email) {
       // Handle newsletter subscription
-      setIsSubscribed(true)
-      setEmail('')
-      setTimeout(() => setIsSubscribed(false), 3000)
+      setIsSubscribed(true);
+      setEmail('');
+      setTimeout(() => setIsSubscribed(false), 3000);
     }
-  }
+  };
 
   return (
     <footer className="bg-gray-900 text-white">
@@ -71,19 +86,23 @@ export function Footer() {
               Stay updated with Chazon
             </h3>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Get the latest news, tips, and exclusive offers delivered to your inbox.
+              Get the latest news, tips, and exclusive offers delivered to your
+              inbox.
             </p>
-            <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto flex gap-4">
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="max-w-md mx-auto flex gap-4"
+            >
               <Input
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 className="flex-1 bg-gray-800 border-gray-700 text-white placeholder-gray-400"
                 required
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-chazon-primary hover:bg-chazon-primary-dark"
                 disabled={isSubscribed}
               >
@@ -106,8 +125,9 @@ export function Footer() {
               <span className="text-xl font-bold">Chazon</span>
             </Link>
             <p className="text-gray-400 mb-6 leading-relaxed">
-              Chazon connects you with skilled Stewards to help with everyday tasks, 
-              from Home cleaning to home repairs and everything in between.
+              Chazon connects you with skilled Stewards to help with everyday
+              tasks, from Home cleaning to home repairs and everything in
+              between.
             </p>
             <div className="space-y-3">
               <div className="flex items-center text-gray-400">
@@ -129,7 +149,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Popular Services</h4>
             <ul className="space-y-2">
-              {footerLinks.services.map((link) => (
+              {footerLinks.services.map(link => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
@@ -147,7 +167,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
+              {footerLinks.company.map(link => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
@@ -165,7 +185,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
-              {footerLinks.support.map((link) => (
+              {footerLinks.support.map(link => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
@@ -183,7 +203,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">For Stewards</h4>
             <ul className="space-y-2">
-              {footerLinks.stewards.map((link) => (
+              {footerLinks.stewards.map(link => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
@@ -206,11 +226,11 @@ export function Footer() {
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
               © 2025 Chazon. All rights reserved.
             </div>
-            
+
             {/* Social Links */}
             <div className="flex space-x-4">
-              {socialLinks.map((social) => {
-                const IconComponent = social.icon
+              {socialLinks.map(social => {
+                const IconComponent = social.icon;
                 return (
                   <a
                     key={social.name}
@@ -222,12 +242,12 @@ export function Footer() {
                   >
                     <IconComponent className="w-5 h-5" />
                   </a>
-                )
+                );
               })}
             </div>
           </div>
         </div>
       </div>
     </footer>
-  )
+  );
 }

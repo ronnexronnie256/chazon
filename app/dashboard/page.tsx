@@ -1,19 +1,40 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, Clock3, User, Settings, BookOpen, Star, Wallet, CalendarDays, TrendingUp, Lightbulb } from 'lucide-react'
-import { useAuthStore } from '@/store/auth'
-import { useBookingsStore } from '@/store/bookings'
-import Image from 'next/image'
+import { useState, useEffect } from 'react';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  CheckCircle,
+  XCircle,
+  Clock3,
+  User,
+  Settings,
+  BookOpen,
+  Star,
+  Wallet,
+  CalendarDays,
+  TrendingUp,
+  Lightbulb,
+} from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
+import { useBookingsStore } from '@/store/bookings';
+import { TermsBanner } from '@/components/ui/terms-banner';
+import Image from 'next/image';
 
 function useUserData() {
-  const { isAuthenticated, user } = useAuthStore()
-  const { bookings } = useBookingsStore()
-  return { isAuthenticated, user, bookings: bookings.slice(0, 3), isSteward: !!user?.isSteward }
+  const { isAuthenticated, user } = useAuthStore();
+  const { bookings } = useBookingsStore();
+  return {
+    isAuthenticated,
+    user,
+    bookings: bookings.slice(0, 3),
+    isSteward: !!user?.isSteward,
+  };
 }
 
 function getStatusBadge(status: string) {
@@ -24,21 +45,21 @@ function getStatusBadge(status: string) {
           <CheckCircle className="h-3 w-3 mr-1" />
           Confirmed
         </span>
-      )
+      );
     case 'COMPLETED':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
           <CheckCircle className="h-3 w-3 mr-1" />
           Completed
         </span>
-      )
+      );
     case 'CANCELLED':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
           <XCircle className="h-3 w-3 mr-1" />
           Cancelled
         </span>
-      )
+      );
     case 'PENDING':
     default:
       return (
@@ -46,64 +67,66 @@ function getStatusBadge(status: string) {
           <Clock3 className="h-3 w-3 mr-1" />
           Pending
         </span>
-      )
+      );
   }
 }
 
 interface SkillRecommendation {
-  category: string
-  demand: number
-  unassignedTasks: number
-  averagePrice: number
-  score: number
-  reason: string
+  category: string;
+  demand: number;
+  unassignedTasks: number;
+  averagePrice: number;
+  score: number;
+  reason: string;
 }
 
 export default function DashboardPage() {
-  const { isAuthenticated, user, bookings, isSteward } = useUserData()
-  const [walletBalance, setWalletBalance] = useState<number | null>(null)
-  const [walletCurrency, setWalletCurrency] = useState<string>('UGX')
-  const [loadingWallet, setLoadingWallet] = useState(false)
-  const [skillRecommendations, setSkillRecommendations] = useState<SkillRecommendation[]>([])
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
+  const { isAuthenticated, user, bookings, isSteward } = useUserData();
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletCurrency, setWalletCurrency] = useState<string>('UGX');
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  const [skillRecommendations, setSkillRecommendations] = useState<
+    SkillRecommendation[]
+  >([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && isSteward && user?.role === 'STEWARD') {
-      fetchWalletBalance()
-      fetchSkillRecommendations()
+      fetchWalletBalance();
+      fetchSkillRecommendations();
     }
-  }, [isAuthenticated, isSteward, user])
+  }, [isAuthenticated, isSteward, user]);
 
   const fetchSkillRecommendations = async () => {
     try {
-      setLoadingRecommendations(true)
-      const response = await fetch('/api/steward/recommendations/skills')
+      setLoadingRecommendations(true);
+      const response = await fetch('/api/steward/recommendations/skills');
       if (response.ok) {
-        const data = await response.json()
-        setSkillRecommendations(data.data || [])
+        const data = await response.json();
+        setSkillRecommendations(data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching skill recommendations:', error)
+      console.error('Error fetching skill recommendations:', error);
     } finally {
-      setLoadingRecommendations(false)
+      setLoadingRecommendations(false);
     }
-  }
+  };
 
   const fetchWalletBalance = async () => {
     try {
-      setLoadingWallet(true)
-      const response = await fetch('/api/wallet/balance')
+      setLoadingWallet(true);
+      const response = await fetch('/api/wallet/balance');
       if (response.ok) {
-        const data = await response.json()
-        setWalletBalance(data.balance?.availableBalance || 0)
-        setWalletCurrency(data.balance?.currency || 'UGX')
+        const data = await response.json();
+        setWalletBalance(data.balance?.availableBalance || 0);
+        setWalletCurrency(data.balance?.currency || 'UGX');
       }
     } catch (error) {
-      console.error('Error fetching wallet balance:', error)
+      console.error('Error fetching wallet balance:', error);
     } finally {
-      setLoadingWallet(false)
+      setLoadingWallet(false);
     }
-  }
+  };
 
   const formatCurrency = (amount: number, currency: string = 'UGX') => {
     return new Intl.NumberFormat('en-US', {
@@ -111,15 +134,16 @@ export default function DashboardPage() {
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   if (!isAuthenticated || !user) {
-    redirect('/auth/signin')
+    redirect('/auth/signin');
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <TermsBanner />
       <Header />
       <main className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -140,7 +164,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${isSteward ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} mb-8`}>
+          <div
+            className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${isSteward ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} mb-8`}
+          >
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">
@@ -149,9 +175,13 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Profile</dt>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Profile
+                      </dt>
                       <dd>
-                        <div className="text-lg font-medium text-gray-900">{isSteward ? 'Steward' : 'Customer'}</div>
+                        <div className="text-lg font-medium text-gray-900">
+                          {isSteward ? 'Steward' : 'Customer'}
+                        </div>
                       </dd>
                     </dl>
                   </div>
@@ -159,7 +189,10 @@ export default function DashboardPage() {
               </div>
               <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm">
-                  <Link href="/profile" className="font-medium text-chazon-primary hover:text-chazon-primary-dark">
+                  <Link
+                    href="/profile"
+                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                  >
                     View profile
                   </Link>
                 </div>
@@ -174,9 +207,13 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Bookings</dt>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Bookings
+                      </dt>
                       <dd>
-                        <div className="text-lg font-medium text-gray-900">{bookings.length} Recent</div>
+                        <div className="text-lg font-medium text-gray-900">
+                          {bookings.length} Recent
+                        </div>
                       </dd>
                     </dl>
                   </div>
@@ -184,7 +221,10 @@ export default function DashboardPage() {
               </div>
               <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm">
-                  <Link href="/bookings" className="font-medium text-chazon-primary hover:text-chazon-primary-dark">
+                  <Link
+                    href="/bookings"
+                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                  >
                     View all bookings
                   </Link>
                 </div>
@@ -201,10 +241,19 @@ export default function DashboardPage() {
                       </div>
                       <div className="ml-5 w-0 flex-1">
                         <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Wallet Balance</dt>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            Wallet Balance
+                          </dt>
                           <dd>
                             <div className="text-lg font-medium text-gray-900">
-                              {loadingWallet ? '...' : walletBalance !== null ? formatCurrency(walletBalance, walletCurrency) : '—'}
+                              {loadingWallet
+                                ? '...'
+                                : walletBalance !== null
+                                  ? formatCurrency(
+                                      walletBalance,
+                                      walletCurrency
+                                    )
+                                  : '—'}
                             </div>
                           </dd>
                         </dl>
@@ -213,7 +262,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="bg-gray-50 px-5 py-3">
                     <div className="text-sm">
-                      <Link href="/dashboard/wallet" className="font-medium text-chazon-primary hover:text-chazon-primary-dark">
+                      <Link
+                        href="/dashboard/wallet"
+                        className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                      >
                         View wallet
                       </Link>
                     </div>
@@ -228,7 +280,9 @@ export default function DashboardPage() {
                       </div>
                       <div className="ml-5 w-0 flex-1">
                         <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Rating</dt>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            Rating
+                          </dt>
                           <dd>
                             <div className="text-lg font-medium text-gray-900">
                               {user.rating?.toFixed(1) || 'New'}
@@ -240,7 +294,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="bg-gray-50 px-5 py-3">
                     <div className="text-sm">
-                      <Link href="/profile" className="font-medium text-chazon-primary hover:text-chazon-primary-dark">
+                      <Link
+                        href="/profile"
+                        className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                      >
                         View reviews
                       </Link>
                     </div>
@@ -257,9 +314,13 @@ export default function DashboardPage() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Account</dt>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Account
+                      </dt>
                       <dd>
-                        <div className="text-lg font-medium text-gray-900">Settings</div>
+                        <div className="text-lg font-medium text-gray-900">
+                          Settings
+                        </div>
                       </dd>
                     </dl>
                   </div>
@@ -267,7 +328,10 @@ export default function DashboardPage() {
               </div>
               <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm">
-                  <Link href="/settings" className="font-medium text-chazon-primary hover:text-chazon-primary-dark">
+                  <Link
+                    href="/settings"
+                    className="font-medium text-chazon-primary hover:text-chazon-primary-dark"
+                  >
                     Manage account
                   </Link>
                 </div>
@@ -279,8 +343,12 @@ export default function DashboardPage() {
           <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
               <div>
-                <h2 className="text-lg leading-6 font-medium text-gray-900">Recent Bookings</h2>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Your most recent service bookings.</p>
+                <h2 className="text-lg leading-6 font-medium text-gray-900">
+                  Recent Bookings
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Your most recent service bookings.
+                </p>
               </div>
               <Link
                 href="/bookings"
@@ -292,14 +360,16 @@ export default function DashboardPage() {
 
             {bookings.length > 0 ? (
               <ul className="divide-y divide-gray-200">
-                {bookings.map((booking) => {
+                {bookings.map(booking => {
                   // Format date for display
-                  const formattedDate = new Date(booking.scheduledDate).toLocaleDateString('en-US', {
+                  const formattedDate = new Date(
+                    booking.scheduledDate
+                  ).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
-                  })
+                  });
 
                   return (
                     <li key={booking.id}>
@@ -309,7 +379,8 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10 rounded-md bg-gray-200 overflow-hidden">
-                                  {booking.service.images && booking.service.images.length > 0 ? (
+                                  {booking.service.images &&
+                                  booking.service.images.length > 0 ? (
                                     <Image
                                       src={booking.service.images[0]}
                                       alt={booking.service.title}
@@ -352,12 +423,14 @@ export default function DashboardPage() {
                         </div>
                       </Link>
                     </li>
-                  )
+                  );
                 })}
               </ul>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">You don't have any bookings yet.</p>
+                <p className="text-gray-500">
+                  You don't have any bookings yet.
+                </p>
                 <Link
                   href="/services"
                   className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-chazon-primary hover:bg-chazon-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-chazon-primary"
@@ -390,24 +463,30 @@ export default function DashboardPage() {
               </div>
               <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {skillRecommendations.slice(0, 3).map((rec) => (
+                  {skillRecommendations.slice(0, 3).map(rec => (
                     <div
                       key={rec.category}
                       className="border border-gray-200 rounded-lg p-4 hover:border-chazon-primary transition-colors"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{rec.category}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {rec.category}
+                        </h3>
                         <TrendingUp className="h-5 w-5 text-green-500" />
                       </div>
                       <p className="text-sm text-gray-600 mb-3">{rec.reason}</p>
                       <div className="space-y-1 text-xs text-gray-500">
                         <div className="flex justify-between">
                           <span>Demand:</span>
-                          <span className="font-medium">{rec.demand} tasks</span>
+                          <span className="font-medium">
+                            {rec.demand} tasks
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Unassigned:</span>
-                          <span className="font-medium">{rec.unassignedTasks} tasks</span>
+                          <span className="font-medium">
+                            {rec.unassignedTasks} tasks
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Avg Price:</span>
@@ -432,8 +511,12 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6">
-              <h2 className="text-lg leading-6 font-medium text-gray-900">Quick Actions</h2>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">Common tasks you might want to perform.</p>
+              <h2 className="text-lg leading-6 font-medium text-gray-900">
+                Quick Actions
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                Common tasks you might want to perform.
+              </p>
             </div>
             <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -499,5 +582,5 @@ export default function DashboardPage() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }

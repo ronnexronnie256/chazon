@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getUser } from "@/lib/supabase/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { getUser } from '@/lib/supabase/auth';
+import { prisma } from '@/lib/prisma';
+import {
+  filterMessage,
+  getHighestSeverity,
+  ViolationType,
+} from '@/lib/message-filter';
 
 /**
  * GET /api/chat/[taskId]
@@ -13,7 +18,7 @@ export async function GET(
   try {
     const user = await getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { taskId } = await params;
@@ -28,13 +33,13 @@ export async function GET(
     });
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     // Check if user is the client or steward for this task
     if (user.id !== task.clientId && user.id !== task.stewardId) {
       return NextResponse.json(
-        { error: "Unauthorized to view this chat" },
+        { error: 'Unauthorized to view this chat' },
         { status: 403 }
       );
     }
@@ -52,13 +57,13 @@ export async function GET(
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     });
 
     // Mark messages as read for the current user (only messages not sent by them)
     const unreadMessageIds = messages
-      .filter((msg) => msg.senderId !== user.id && !msg.readAt)
-      .map((msg) => msg.id);
+      .filter(msg => msg.senderId !== user.id && !msg.readAt)
+      .map(msg => msg.id);
 
     if (unreadMessageIds.length > 0) {
       await prisma.chatMessage.updateMany({
@@ -76,9 +81,9 @@ export async function GET(
       data: messages,
     });
   } catch (error) {
-    console.error("Error fetching chat messages:", error);
+    console.error('Error fetching chat messages:', error);
     return NextResponse.json(
-      { error: "Failed to fetch messages" },
+      { error: 'Failed to fetch messages' },
       { status: 500 }
     );
   }
@@ -95,159 +100,27 @@ export async function POST(
   try {
     const user = await getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { taskId } = await params;
     const body = await req.json();
-    const { content, contentType = "TEXT" } = body;
+    const { content, contentType = 'TEXT' } = body;
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
-        { error: "Message content is required" },
+        { error: 'Message content is required' },
         { status: 400 }
       );
     }
 
     // Validate content type
-    const validContentTypes = ["TEXT", "IMAGE", "LOCATION"];
+    const validContentTypes = ['TEXT', 'IMAGE', 'LOCATION'];
     if (!validContentTypes.includes(contentType)) {
       return NextResponse.json(
-        { error: "Invalid content type" },
+        { error: 'Invalid content type' },
         { status: 400 }
       );
-    }
-
-    // Contact sharing restrictions (FR-25)
-    // Prevent sharing phone numbers, emails, WhatsApp links, social media, and external links
-    if (contentType === "TEXT") {
-      const textContent = content.toLowerCase();
-      const originalContent = content; // Keep original for better detection
-      
-      // Check for phone numbers (various formats including Uganda)
-      const phonePatterns = [
-        /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/, // US format: 123-456-7890
-        /\b\+?\d{10,15}\b/, // International format: +1234567890 or 1234567890
-        /\b\d{3}\s?\d{3}\s?\d{4}\b/, // Space-separated: 123 456 7890
-        /\b0\d{9}\b/, // Uganda format: 0700123456
-        /\b\+256\d{9}\b/, // Uganda international: +256700123456
-        /\b256\d{9}\b/, // Uganda without plus: 256700123456
-        /\b\d{4}[-.\s]?\d{3}[-.\s]?\d{3}\b/, // Various separators
-        /call\s+me\s+at\s+[\d\s\+\-\(\)]+/i, // "call me at 123..."
-        /phone\s*:?\s*[\d\s\+\-\(\)]+/i, // "phone: 123..."
-        /contact\s+me\s+at\s+[\d\s\+\-\(\)]+/i, // "contact me at 123..."
-        /reach\s+me\s+at\s+[\d\s\+\-\(\)]+/i, // "reach me at 123..."
-      ];
-      
-      // Check for email addresses
-      const emailPatterns = [
-        /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Standard email
-        /email\s*:?\s*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/i, // "email: user@example.com"
-        /contact\s+me\s+at\s+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/i, // "contact me at user@example.com"
-        /reach\s+me\s+at\s+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/i, // "reach me at user@example.com"
-      ];
-      
-      // Check for WhatsApp links and references
-      const whatsappPatterns = [
-        /wa\.me\/[\d\w]+/i, // wa.me/1234567890
-        /whatsapp\.com\/send\?phone=[\d\w]+/i, // whatsapp.com/send?phone=123
-        /whatsapp\s*:?\s*[\d\s\+\-\(\)]+/i, // "whatsapp: 123..."
-        /whatsapp\s+me\s+at\s+[\d\s\+\-\(\)]+/i, // "whatsapp me at 123..."
-        /text\s+me\s+on\s+whatsapp/i, // "text me on whatsapp"
-        /message\s+me\s+on\s+whatsapp/i, // "message me on whatsapp"
-      ];
-      
-      // Check for social media handles and links
-      const socialMediaPatterns = [
-        /@[\w]+/i, // @username (Twitter, Instagram, etc.)
-        /instagram\.com\/[\w]+/i, // instagram.com/username
-        /facebook\.com\/[\w]+/i, // facebook.com/username
-        /twitter\.com\/[\w]+/i, // twitter.com/username
-        /x\.com\/[\w]+/i, // x.com/username
-        /linkedin\.com\/in\/[\w]+/i, // linkedin.com/in/username
-        /tiktok\.com\/@[\w]+/i, // tiktok.com/@username
-        /snapchat\.com\/add\/[\w]+/i, // snapchat.com/add/username
-        /telegram\.me\/[\w]+/i, // telegram.me/username
-        /t\.me\/[\w]+/i, // t.me/username
-      ];
-      
-      // Check for external links (except images from our storage and allowed domains)
-      const externalLinkPattern = /https?:\/\/(?!.*supabase\.co)(?!.*chazon\.com)(?!.*storage\.supabase\.co)[^\s]+/i;
-      
-      // Check for common contact sharing phrases
-      const contactSharingPhrases = [
-        /my\s+number\s+is/i, // "my number is"
-        /call\s+me/i, // "call me"
-        /text\s+me/i, // "text me"
-        /dm\s+me/i, // "dm me"
-        /direct\s+message/i, // "direct message"
-        /private\s+message/i, // "private message"
-        /hit\s+me\s+up/i, // "hit me up"
-        /reach\s+out/i, // "reach out"
-      ];
-      
-      // Validate phone numbers
-      if (phonePatterns.some(pattern => pattern.test(originalContent))) {
-        return NextResponse.json(
-          { 
-            error: "Sharing phone numbers is not allowed. Please use the in-app chat for all communication to ensure your safety and protect the platform.",
-            code: "CONTACT_SHARING_RESTRICTED"
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Validate email addresses
-      if (emailPatterns.some(pattern => pattern.test(originalContent))) {
-        return NextResponse.json(
-          { 
-            error: "Sharing email addresses is not allowed. Please use the in-app chat for all communication.",
-            code: "CONTACT_SHARING_RESTRICTED"
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Validate WhatsApp links
-      if (whatsappPatterns.some(pattern => pattern.test(textContent))) {
-        return NextResponse.json(
-          { 
-            error: "Sharing WhatsApp contact information is not allowed. Please use the in-app chat for all communication.",
-            code: "CONTACT_SHARING_RESTRICTED"
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Validate social media
-      if (socialMediaPatterns.some(pattern => pattern.test(textContent))) {
-        return NextResponse.json(
-          { 
-            error: "Sharing social media profiles is not allowed. Please use the in-app chat for all communication.",
-            code: "CONTACT_SHARING_RESTRICTED"
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Validate external links
-      if (externalLinkPattern.test(originalContent)) {
-        return NextResponse.json(
-          { 
-            error: "Sharing external links is not allowed for safety reasons. You can share images through the chat if needed.",
-            code: "EXTERNAL_LINK_RESTRICTED"
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Check for contact sharing phrases (warn but allow if no actual contact info)
-      // This is a softer check - we'll allow the message but could log it for monitoring
-      const hasContactPhrase = contactSharingPhrases.some(pattern => pattern.test(textContent));
-      if (hasContactPhrase) {
-        // If they're using contact phrases, check if they might be trying to share contact info
-        // We'll allow it but could enhance this later with ML or more sophisticated detection
-      }
     }
 
     // Verify user has access to this task (must be client or steward)
@@ -260,15 +133,108 @@ export async function POST(
     });
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     // Check if user is the client or steward for this task
     if (user.id !== task.clientId && user.id !== task.stewardId) {
       return NextResponse.json(
-        { error: "Unauthorized to send messages in this chat" },
+        { error: 'Unauthorized to send messages in this chat' },
         { status: 403 }
       );
+    }
+
+    // Contact sharing restrictions (FR-25)
+    // Use the message filter to detect violations
+    if (contentType === 'TEXT') {
+      const filterResult = filterMessage(content, { blockOnViolation: true });
+
+      if (!filterResult.isAllowed) {
+        const severity = getHighestSeverity(filterResult.violations);
+        const primaryViolation = filterResult.violations[0];
+
+        // Get the other party in the conversation for flagging
+        const recipientId =
+          user.id === task.clientId ? task.stewardId : task.clientId;
+
+        // Log the violation to database for admin review
+        try {
+          await prisma.flaggedMessage.create({
+            data: {
+              messageId: `blocked_${Date.now()}_${user.id}`,
+              senderId: user.id,
+              recipientId: recipientId,
+              taskId: taskId,
+              originalContent: content.substring(0, 1000),
+              violationType: primaryViolation.type,
+              severity: severity,
+            },
+          });
+        } catch (logError) {
+          console.error('Failed to log flagged message:', logError);
+        }
+
+        // Log security event
+        await prisma.securityEvent.create({
+          data: {
+            userId: user.id,
+            type: `CHAT_VIOLATION_${primaryViolation.type}`,
+            severity: severity === 'HIGH' ? 'HIGH' : 'MEDIUM',
+            details: {
+              taskId,
+              violationTypes: filterResult.violations.map((v: any) => v.type),
+              contentLength: content.length,
+            },
+          },
+        });
+
+        // Return appropriate error message based on severity
+        const errorMessages: Record<string, string> = {
+          PHONE_NUMBER:
+            'Sharing phone numbers is not allowed. All communication must go through Chazon to protect both parties.',
+          EMAIL:
+            'Sharing email addresses is not allowed. Please use the in-app chat for all communication.',
+          WHATSAPP:
+            'Sharing WhatsApp contact information is not allowed. Please use the in-app chat for all communication.',
+          SOCIAL_MEDIA:
+            'Sharing social media references is not allowed. All communication should stay on Chazon.',
+          EXTERNAL_LINK:
+            'External links are not allowed in messages. Please keep all communication on Chazon.',
+          CONTACT_SHARING_PHRASE:
+            'Please avoid suggesting off-platform communication. For your safety, all communication should stay on Chazon.',
+        };
+
+        return NextResponse.json(
+          {
+            error:
+              errorMessages[primaryViolation.type] ||
+              'This message contains prohibited content.',
+            code: 'CONTACT_SHARING_RESTRICTED',
+            violation: primaryViolation.type,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Log MEDIUM/LOW violations for monitoring (but allow the message)
+      if (filterResult.violations.length > 0) {
+        const severity = getHighestSeverity(filterResult.violations);
+        if (severity !== 'HIGH') {
+          await prisma.securityEvent
+            .create({
+              data: {
+                userId: user.id,
+                type: `CHAT_WARNING_${filterResult.violations[0].type}`,
+                severity: 'LOW',
+                details: {
+                  taskId,
+                  violations: filterResult.violations.map((v: any) => v.type),
+                },
+              },
+            })
+            .catch(console.error);
+        }
+      }
     }
 
     // Create the message
@@ -296,11 +262,10 @@ export async function POST(
       data: message,
     });
   } catch (error) {
-    console.error("Error sending message:", error);
+    console.error('Error sending message:', error);
     return NextResponse.json(
-      { error: "Failed to send message" },
+      { error: 'Failed to send message' },
       { status: 500 }
     );
   }
 }
-

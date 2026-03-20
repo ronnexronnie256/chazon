@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { getUser, requireTrustLevel, StepUpError } from "@/lib/clerk/auth";
-import { getWalletBalance } from "@/lib/wallet";
-import { initiateTransfer } from "@/lib/flutterwave";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { getUser, requireTrustLevel, StepUpError } from '@/lib/supabase/auth';
+import { getWalletBalance } from '@/lib/wallet';
+import { initiateTransfer } from '@/lib/flutterwave';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Calculate withdrawal fee
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   try {
     const user = await getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Enforce Step-Up Authentication (High Trust Level required)
@@ -47,11 +47,11 @@ export async function POST(req: Request) {
     } catch (error) {
       if (error instanceof StepUpError) {
         return NextResponse.json(
-          { 
-            error: error.message, 
+          {
+            error: error.message,
             code: error.code,
             requiresReauth: true,
-            provider: "google"
+            provider: 'google',
           },
           { status: 403 }
         );
@@ -60,27 +60,28 @@ export async function POST(req: Request) {
     }
 
     // Only stewards can withdraw
-    if (user.role !== "STEWARD") {
+    if (user.role !== 'STEWARD') {
       return NextResponse.json(
-        { error: "Only stewards can withdraw funds" },
+        { error: 'Only stewards can withdraw funds' },
         { status: 403 }
       );
     }
 
     const body = await req.json();
-    const { amount, accountNumber, accountBank, beneficiaryName, narration } = body;
+    const { amount, accountNumber, accountBank, beneficiaryName, narration } =
+      body;
 
     // Validation
     if (!amount || amount <= 0) {
       return NextResponse.json(
-        { error: "Invalid withdrawal amount" },
+        { error: 'Invalid withdrawal amount' },
         { status: 400 }
       );
     }
 
     if (!accountNumber || !accountBank) {
       return NextResponse.json(
-        { error: "Account number and bank code are required" },
+        { error: 'Account number and bank code are required' },
         { status: 400 }
       );
     }
@@ -102,12 +103,12 @@ export async function POST(req: Request) {
 
     // Calculate withdrawal fee
     const feeCalculation = calculateWithdrawalFee(amount);
-    
+
     // Check if net amount after fees is positive
     if (feeCalculation.netAmount <= 0) {
       return NextResponse.json(
         {
-          error: "Withdrawal amount is too small after fees",
+          error: 'Withdrawal amount is too small after fees',
           fee: feeCalculation.totalFee,
           netAmount: feeCalculation.netAmount,
         },
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
     if (amount > balance.availableBalance) {
       return NextResponse.json(
         {
-          error: "Insufficient balance",
+          error: 'Insufficient balance',
           availableBalance: balance.availableBalance,
           currency: balance.currency,
         },
@@ -131,7 +132,7 @@ export async function POST(req: Request) {
     if (balance.frozenBalance > 0) {
       return NextResponse.json(
         {
-          error: "Some funds are frozen due to active disputes",
+          error: 'Some funds are frozen due to active disputes',
           frozenBalance: balance.frozenBalance,
           availableBalance: balance.availableBalance,
         },
@@ -154,14 +155,14 @@ export async function POST(req: Request) {
         beneficiary_name: beneficiaryName || user.name,
       });
 
-      if (transferResponse.status === "success" && transferResponse.data) {
+      if (transferResponse.status === 'success' && transferResponse.data) {
         // Get or create a system task for withdrawals
         // This allows us to track withdrawals in the Transaction table
         let systemTask = await prisma.task.findFirst({
           where: {
             clientId: user.id,
             stewardId: user.id,
-            category: "SYSTEM_WITHDRAWAL",
+            category: 'SYSTEM_WITHDRAWAL',
           },
         });
 
@@ -171,14 +172,14 @@ export async function POST(req: Request) {
             data: {
               clientId: user.id,
               stewardId: user.id,
-              category: "SYSTEM_WITHDRAWAL",
-              description: "System task for tracking withdrawals",
-              address: "N/A",
+              category: 'SYSTEM_WITHDRAWAL',
+              description: 'System task for tracking withdrawals',
+              address: 'N/A',
               agreedPrice: 0,
               currency: balance.currency,
-              pricingType: "FLAT",
+              pricingType: 'FLAT',
               scheduledStart: new Date(),
-              status: "DONE",
+              status: 'DONE',
             },
           });
         }
@@ -189,13 +190,13 @@ export async function POST(req: Request) {
             taskId: systemTask.id,
             amount: -amount, // Negative to represent withdrawal
             platformFee: feeCalculation.totalFee, // Store withdrawal fee
-            type: "PAYOUT", // Reusing PAYOUT type for withdrawals
+            type: 'PAYOUT', // Reusing PAYOUT type for withdrawals
             status:
-              transferResponse.data.status === "SUCCESSFUL"
-                ? "COMPLETED"
-                : "PENDING",
+              transferResponse.data.status === 'SUCCESSFUL'
+                ? 'COMPLETED'
+                : 'PENDING',
             providerTransactionId: transferResponse.data.id?.toString(),
-            paymentMethod: "mobile_money",
+            paymentMethod: 'mobile_money',
             metadata: {
               withdrawal: true,
               accountNumber,
@@ -215,7 +216,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          message: "Withdrawal initiated successfully",
+          message: 'Withdrawal initiated successfully',
           data: {
             withdrawalId: withdrawalRecord.id,
             amount,
@@ -230,26 +231,26 @@ export async function POST(req: Request) {
       } else {
         return NextResponse.json(
           {
-            error: "Failed to initiate withdrawal",
-            message: transferResponse.message || "Unknown error",
+            error: 'Failed to initiate withdrawal',
+            message: transferResponse.message || 'Unknown error',
           },
           { status: 500 }
         );
       }
     } catch (error: any) {
-      console.error("Flutterwave transfer error:", error);
+      console.error('Flutterwave transfer error:', error);
       return NextResponse.json(
         {
-          error: "Failed to process withdrawal",
-          message: error.message || "Transfer initiation failed",
+          error: 'Failed to process withdrawal',
+          message: error.message || 'Transfer initiation failed',
         },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Withdrawal error:", error);
+    console.error('Withdrawal error:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
