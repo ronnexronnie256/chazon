@@ -3,7 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Menu, X, User, Bell, MessageSquare } from 'lucide-react';
+import {
+  Search,
+  Menu,
+  X,
+  User,
+  MessageSquare,
+  ChevronDown,
+  LayoutDashboard,
+  Settings,
+  CreditCard,
+  Calendar,
+  FileText,
+  Shield,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { subscribeToUnreadCount } from '@/lib/supabase/realtime';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -24,23 +37,29 @@ export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      router.push(`/services?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
-  // Fetch unread message count and set up Realtime subscription
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Initial fetch
       fetchUnreadCount();
 
-      // Set up Realtime subscription for unread count updates
       let channel: RealtimeChannel | null = null;
 
       try {
@@ -49,25 +68,19 @@ export function Header() {
           count => {
             setUnreadCount(count);
           },
-          error => {
-            console.error('Realtime subscription error:', error);
-            // Fallback to polling if Realtime fails
+          () => {
             const interval = setInterval(fetchUnreadCount, 10000);
             return () => clearInterval(interval);
           }
         );
       } catch (error) {
-        console.error('Error setting up Realtime subscription:', error);
-        // Fallback to polling if Realtime setup fails
+        console.error('Realtime subscription error:', error);
         const interval = setInterval(fetchUnreadCount, 10000);
         return () => clearInterval(interval);
       }
 
-      // Cleanup subscription on unmount
       return () => {
-        if (channel) {
-          channel.unsubscribe();
-        }
+        if (channel) channel.unsubscribe();
       };
     }
   }, [isAuthenticated, user]);
@@ -85,45 +98,51 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? 'bg-white/95 backdrop-blur-lg shadow-sm border-b border-gray-100'
+          : 'bg-white border-b border-gray-100'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-18 py-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-chazon-primary rounded-lg flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-chazon-primary to-chazon-primary-dark rounded-xl flex items-center justify-center shadow-lg shadow-chazon-primary/25 group-hover:shadow-xl group-hover:shadow-chazon-primary/30 transition-all">
               <span className="text-white font-bold text-lg">CH</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">Chazon</span>
+            <span className="text-2xl font-bold text-gray-900">Chazon</span>
           </Link>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-lg mx-8">
+          <div className="hidden lg:flex flex-1 max-w-xl mx-10">
             <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 transition-colors group-focus-within:text-chazon-primary" />
                 <Input
                   type="text"
-                  placeholder="What do you need help with?"
+                  placeholder="Search for services..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-chazon-primary focus:border-transparent"
+                  className="pl-12 pr-4 h-12 bg-gray-50 border-transparent rounded-full focus:bg-white focus:border-chazon-primary/30 focus:ring-2 focus:ring-chazon-primary/20 transition-all"
                 />
               </div>
             </form>
           </div>
 
           {/* Navigation - Desktop */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden lg:flex items-center gap-2">
             <Link
               href="/services"
-              className="text-gray-700 hover:text-chazon-primary transition-colors"
+              className="px-4 py-2.5 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all font-medium"
             >
               Services
             </Link>
             {user?.role !== 'STEWARD' && user?.role !== 'ADMIN' && (
               <Link
                 href="/become-steward"
-                className="text-gray-700 hover:text-chazon-primary transition-colors"
+                className="px-4 py-2.5 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all font-medium"
               >
                 Become a Steward
               </Link>
@@ -131,103 +150,165 @@ export function Header() {
             {user?.role === 'ADMIN' && (
               <Link
                 href="/admin"
-                className="text-gray-700 hover:text-chazon-primary transition-colors font-medium"
+                className="px-4 py-2.5 text-chazon-primary bg-chazon-primary/10 hover:bg-chazon-primary/20 rounded-xl transition-all font-semibold"
               >
                 Admin
               </Link>
             )}
 
             {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                {/* Notifications */}
+              <div className="flex items-center gap-2 pl-4 border-l border-gray-200">
                 <NotificationsDropdown />
 
-                {/* Messages */}
-                <Link href="/chat">
-                  <Button variant="ghost" size="sm" className="relative">
+                <Link href="/chat" className="relative">
+                  <Button variant="ghost" size="icon" className="relative">
                     <MessageSquare className="w-5 h-5" />
                     {unreadCount > 0 && (
-                      <Badge className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 flex items-center justify-center bg-chazon-primary text-white text-xs">
+                      <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
                         {unreadCount > 99 ? '99+' : unreadCount}
-                      </Badge>
+                      </span>
                     )}
                   </Button>
                 </Link>
 
-                {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="relative h-8 w-8 rounded-full"
+                      className="gap-2 px-2 h-12 rounded-xl hover:bg-gray-50"
                     >
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-8 w-8 ring-2 ring-white shadow">
                         <AvatarImage
                           src={user?.image || ''}
                           alt={user?.name || ''}
                         />
-                        <AvatarFallback>
+                        <AvatarFallback className="bg-chazon-primary/10 text-chazon-primary font-semibold">
                           {user?.name?.charAt(0) || (
                             <User className="w-4 h-4" />
                           )}
                         </AvatarFallback>
                       </Avatar>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <div className="flex items-center justify-start gap-2 p-2">
-                      <div className="flex flex-col space-y-1 leading-none">
-                        {user?.name && (
-                          <p className="font-medium">{user.name}</p>
-                        )}
-                        {user?.email && (
-                          <p className="w-[200px] truncate text-sm text-muted-foreground">
-                            {user.email}
-                          </p>
-                        )}
+                  <DropdownMenuContent
+                    className="w-72 p-2"
+                    align="end"
+                    forceMount
+                  >
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 mb-2">
+                      <Avatar className="h-12 w-12 ring-2 ring-white shadow">
+                        <AvatarImage
+                          src={user?.image || ''}
+                          alt={user?.name || ''}
+                        />
+                        <AvatarFallback className="bg-chazon-primary text-white font-semibold text-lg">
+                          {user?.name?.charAt(0) || (
+                            <User className="w-5 h-5" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <p className="font-semibold text-gray-900">
+                          {user?.name}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {user?.email}
+                        </p>
+                        <Badge
+                          variant="secondary"
+                          className="w-fit mt-1 text-xs"
+                        >
+                          {user?.role === 'STEWARD'
+                            ? 'Steward'
+                            : user?.role === 'ADMIN'
+                              ? 'Admin'
+                              : 'Client'}
+                        </Badge>
                       </div>
                     </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">Dashboard</Link>
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuItem asChild className="rounded-lg">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center gap-3 py-2.5"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-gray-500" />
+                        <span>Dashboard</span>
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile">Profile</Link>
+                    <DropdownMenuItem asChild className="rounded-lg">
+                      <Link
+                        href="/bookings"
+                        className="flex items-center gap-3 py-2.5"
+                      >
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <span>My Bookings</span>
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/bookings">My Bookings</Link>
+                    <DropdownMenuItem asChild className="rounded-lg">
+                      <Link
+                        href="/chat"
+                        className="flex items-center gap-3 py-2.5"
+                      >
+                        <MessageSquare className="w-4 h-4 text-gray-500" />
+                        <span>Messages</span>
+                        {unreadCount > 0 && (
+                          <Badge className="ml-auto bg-red-500 text-white">
+                            {unreadCount}
+                          </Badge>
+                        )}
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings">Settings</Link>
+                    <DropdownMenuItem asChild className="rounded-lg">
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-3 py-2.5"
+                      >
+                        <Settings className="w-4 h-4 text-gray-500" />
+                        <span>Settings</span>
+                      </Link>
                     </DropdownMenuItem>
-                    {user?.role === 'ADMIN' && (
+                    {user?.role === 'STEWARD' && (
                       <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin">Dashboard</Link>
+                        <DropdownMenuSeparator className="my-2" />
+                        <DropdownMenuItem asChild className="rounded-lg">
+                          <Link
+                            href="/dashboard/wallet"
+                            className="flex items-center gap-3 py-2.5"
+                          >
+                            <CreditCard className="w-4 h-4 text-gray-500" />
+                            <span>Wallet & Earnings</span>
+                          </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin/users">User Management</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin/tasks">Task Monitoring</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin/disputes">Disputes</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin/payouts">Payouts</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/admin/stewards">
-                            Steward Applications
+                        <DropdownMenuItem asChild className="rounded-lg">
+                          <Link
+                            href="/dashboard/services"
+                            className="flex items-center gap-3 py-2.5"
+                          >
+                            <FileText className="w-4 h-4 text-gray-500" />
+                            <span>My Services</span>
                           </Link>
                         </DropdownMenuItem>
                       </>
                     )}
-                    <DropdownMenuSeparator />
+                    {user?.role === 'ADMIN' && (
+                      <>
+                        <DropdownMenuSeparator className="my-2" />
+                        <DropdownMenuItem asChild className="rounded-lg">
+                          <Link
+                            href="/admin"
+                            className="flex items-center gap-3 py-2.5"
+                          >
+                            <Shield className="w-4 h-4 text-chazon-primary" />
+                            <span className="font-semibold">Admin Panel</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator className="my-2" />
                     <DropdownMenuItem
-                      className="cursor-pointer"
+                      className="rounded-lg cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                       onSelect={async event => {
                         event.preventDefault();
                         await logout();
@@ -241,16 +322,17 @@ export function Header() {
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                 <Button
                   variant="ghost"
                   onClick={() => router.push('/auth/signin')}
+                  className="font-medium"
                 >
                   Log in
                 </Button>
                 <Button
                   onClick={() => router.push('/auth/signup')}
-                  className="bg-chazon-primary hover:bg-chazon-primary-dark"
+                  className="font-medium shadow-lg shadow-chazon-primary/25"
                 >
                   Sign up
                 </Button>
@@ -259,10 +341,10 @@ export function Header() {
           </nav>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="lg:hidden flex items-center gap-2">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? (
@@ -275,16 +357,16 @@ export function Header() {
         </div>
 
         {/* Mobile Search */}
-        <div className="md:hidden pb-4">
+        <div className="lg:hidden pb-4">
           <form onSubmit={handleSearch}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
                 type="text"
-                placeholder="What do you need help with?"
+                placeholder="Search services..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full"
+                className="pl-12 h-12 bg-gray-50 border-transparent rounded-full"
               />
             </div>
           </form>
@@ -292,143 +374,155 @@ export function Header() {
       </div>
 
       {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-4 py-2 space-y-1">
+      <div
+        className={`lg:hidden transition-all duration-300 overflow-hidden ${
+          isMenuOpen ? 'max-h-screen' : 'max-h-0'
+        }`}
+      >
+        <div className="bg-white border-t border-gray-100 px-4 py-4 space-y-1">
+          <Link
+            href="/services"
+            className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Services
+          </Link>
+          {isAuthenticated && (
             <Link
-              href="/services"
-              className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
+              href="/chat"
+              className="flex items-center justify-between px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
               onClick={() => setIsMenuOpen(false)}
             >
-              Services
+              <span className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5" />
+                Messages
+              </span>
+              {unreadCount > 0 && (
+                <Badge className="bg-red-500 text-white">{unreadCount}</Badge>
+              )}
             </Link>
-            {isAuthenticated && (
+          )}
+          {isAuthenticated &&
+            user?.role !== 'STEWARD' &&
+            user?.role !== 'ADMIN' && (
               <Link
-                href="/chat"
-                className="flex items-center justify-between px-3 py-2 text-gray-700 hover:text-chazon-primary"
+                href="/become-steward"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <span className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Messages
-                </span>
-                {unreadCount > 0 && (
-                  <Badge className="bg-chazon-primary text-white text-xs">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                )}
+                Become a Steward
               </Link>
             )}
-            {isAuthenticated &&
-              user?.role !== 'STEWARD' &&
-              user?.role !== 'ADMIN' && (
-                <Link
-                  href="/become-steward"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Become a Steward
-                </Link>
-              )}
-            {isAuthenticated && user?.role === 'ADMIN' && (
-              <>
-                <Link
-                  href="/admin"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Admin Dashboard
-                </Link>
-                <Link
-                  href="/admin/users"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  User Management
-                </Link>
-                <Link
-                  href="/admin/tasks"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Task Monitoring
-                </Link>
-                <Link
-                  href="/admin/disputes"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Disputes
-                </Link>
-                <Link
-                  href="/admin/payouts"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Payouts
-                </Link>
-                <Link
-                  href="/admin/stewards"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Steward Applications
-                </Link>
-              </>
-            )}
-            {isAuthenticated ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={async () => {
-                    setIsMenuOpen(false);
-                    await logout();
-                    router.push('/auth/signin');
-                    router.refresh();
-                  }}
-                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    router.push('/auth/signin');
-                    setIsMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-chazon-primary"
-                >
-                  Log in
-                </button>
-                <button
-                  onClick={() => {
-                    router.push('/auth/signup');
-                    setIsMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-white bg-chazon-primary rounded-md"
-                >
-                  Sign up
-                </button>
-              </>
-            )}
-          </div>
+          {isAuthenticated && user?.role === 'ADMIN' && (
+            <>
+              <Link
+                href="/admin"
+                className="flex items-center px-4 py-3 text-chazon-primary font-semibold hover:bg-chazon-primary/5 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Admin Dashboard
+              </Link>
+              <Link
+                href="/admin/users"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                User Management
+              </Link>
+              <Link
+                href="/admin/tasks"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Task Monitoring
+              </Link>
+              <Link
+                href="/admin/disputes"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Disputes
+              </Link>
+              <Link
+                href="/admin/payouts"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Payouts
+              </Link>
+              <Link
+                href="/admin/stewards"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Steward Applications
+              </Link>
+            </>
+          )}
+          {isAuthenticated ? (
+            <>
+              <div className="h-px bg-gray-100 my-3" />
+              <Link
+                href="/dashboard"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/bookings"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                My Bookings
+              </Link>
+              <Link
+                href="/settings"
+                className="flex items-center px-4 py-3 text-gray-700 hover:text-chazon-primary hover:bg-gray-50 rounded-xl transition-all"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Settings
+              </Link>
+              <button
+                onClick={async () => {
+                  setIsMenuOpen(false);
+                  await logout();
+                  router.push('/auth/signin');
+                  router.refresh();
+                }}
+                className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <div className="h-px bg-gray-100 my-3" />
+          )}
+          {!isAuthenticated && (
+            <div className="flex flex-col gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  router.push('/auth/signin');
+                  setIsMenuOpen(false);
+                }}
+                className="w-full"
+              >
+                Log in
+              </Button>
+              <Button
+                onClick={() => {
+                  router.push('/auth/signup');
+                  setIsMenuOpen(false);
+                }}
+                className="w-full shadow-lg"
+              >
+                Sign up
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </header>
   );
 }

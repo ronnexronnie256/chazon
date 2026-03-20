@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -32,7 +34,16 @@
     --input: 220 13% 91%;
     --ring: 234 42% 52%;
 
-    --radius: 0.75rem;
+    --radius: 12px;
+
+    /* Chazon Brand Colors */
+    --chazon-primary: #5a6cb4;
+    --chazon-primary-dark: #4a5a9e;
+    --chazon-primary-light: #7a8cd4;
+    --chazon-accent: #3b82f6;
+    --chazon-success: #22c55e;
+    --chazon-warning: #f59e0b;
+    --chazon-error: #ef4444;
   }
 
   .dark {
@@ -70,14 +81,34 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    @apply tracking-tight;
   }
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+/* Text selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
 }
 
 /* Custom scrollbar */
@@ -99,38 +130,80 @@ html {
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Text selection */
-::selection {
-  background: hsl(var(--primary) / 0.2);
-  color: hsl(var(--primary));
+/* Focus states */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary/50 ring-offset-2;
 }
 
-/* Chazon specific styles */
-.chazon-gradient {
-  background: linear-gradient(135deg, #5a6cb4 0%, #0066cc 100%);
+/* Chazon brand utilities */
+.bg-chazon-primary {
+  background-color: var(--chazon-primary);
 }
 
-.chazon-shadow {
-  box-shadow: 0 4px 20px rgba(90, 108, 180, 0.25);
+.bg-chazon-primary-dark {
+  background-color: var(--chazon-primary-dark);
 }
 
-.hero-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%235a6cb4' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+.bg-chazon-primary-light {
+  background-color: var(--chazon-primary-light);
 }
 
-/* Animation classes */
-.fade-in {
-  animation: fadeIn 0.5s ease-in-out;
+.hover\:bg-chazon-primary-dark:hover {
+  background-color: var(--chazon-primary-dark);
 }
 
-.fade-in-up {
-  animation: fadeInUp 0.5s ease-out;
+.text-chazon-primary {
+  color: var(--chazon-primary);
 }
 
-.fade-in-scale {
-  animation: fadeInScale 0.3s ease-out;
+.text-chazon-primary-dark {
+  color: var(--chazon-primary-dark);
 }
 
+.hover\:text-chazon-primary-dark:hover {
+  color: var(--chazon-primary-dark);
+}
+
+.border-chazon-primary {
+  border-color: var(--chazon-primary);
+}
+
+.hover\:border-chazon-primary:hover {
+  border-color: var(--chazon-primary);
+}
+
+.hover\:border-chazon-primary\/30:hover {
+  border-color: rgb(90 108 180 / 0.3);
+}
+
+.ring-chazon-primary\/30 {
+  --tw-ring-color: rgb(90 108 180 / 0.3);
+}
+
+.shadow-chazon-primary\/25 {
+  --tw-shadow-color: rgb(90 108 180 / 0.25);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--chazon-primary) 0%,
+    var(--chazon-accent) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glassmorphism */
+.glass {
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Animation keyframes */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -151,7 +224,18 @@ html {
   }
 }
 
-@keyframes fadeInScale {
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
   from {
     opacity: 0;
     transform: scale(0.95);
@@ -162,20 +246,77 @@ html {
   }
 }
 
-.slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
+@keyframes slideInRight {
   from {
-    transform: translateY(100%);
+    opacity: 0;
+    transform: translateX(20px);
   }
   to {
-    transform: translateY(0);
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-/* Staggered animation delays */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Stagger delays */
 .stagger-1 {
   animation-delay: 0.1s;
 }
@@ -192,77 +333,7 @@ html {
   animation-delay: 0.5s;
 }
 
-/* Skeleton shimmer animation */
-.animate-shimmer {
-  animation: shimmer 2s linear infinite;
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted)) 0%,
-    hsl(var(--muted) / 0.5) 50%,
-    hsl(var(--muted)) 100%
-  );
-  background-size: 200% 100%;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Pulse animation for live indicators */
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-.pulse-ring::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-}
-
-/* Improved focus states */
-*:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Glassmorphism effect */
-.glass {
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #5a6cb4 0%, #0066cc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Subtle hover lift */
+/* Hover lift effect */
 .hover-lift {
   transition:
     transform 0.2s ease,
@@ -270,44 +341,15 @@ a:focus-visible {
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px -5px rgb(0 0 0 / 0.1);
+  transform: translateY(-4px);
 }
 
-/* Subtle glow effect */
+/* Glow effect */
 .glow {
   box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
 }
 
-/* Ring offset for inputs */
-input,
-select,
-textarea {
-  @apply transition-all duration-200;
-}
-
-/* Improved transitions for interactive elements */
-button,
-a,
-input,
-select,
-textarea,
-.card,
-.btn {
-  @apply transition-all duration-200;
-}
-
-/* Hide scrollbar but keep functionality for specific containers */
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Better line clamping */
+/* Line clamp */
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -327,4 +369,52 @@ textarea,
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Hide scrollbar */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Container fluid */
+.container-fluid {
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-fluid {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-fluid {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Smooth image loading */
+img {
+  transition: opacity 0.3s ease;
+}
+
+img[loading='lazy'] {
+  opacity: 0;
+}
+
+img[loading='lazy'].loaded,
+img:not([loading='lazy']) {
+  opacity: 1;
 }

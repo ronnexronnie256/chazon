@@ -1,197 +1,271 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Search, Star, Shield, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, CheckCircle2, Clock, Award, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const popularServices = [
+  'Deep Cleaning',
   'Furniture Assembly',
-  'TV Mounting',
+  'Plumbing',
   'Moving Help',
-  'Cleaning',
   'Handyman',
-  'Delivery'
-]
+  'Electrical',
+];
+
+const trustFeatures = [
+  { icon: CheckCircle2, text: 'Verified Stewards' },
+  { icon: Clock, text: 'Same-Day Service' },
+  { icon: Award, text: 'Satisfaction Guaranteed' },
+];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 export function Hero() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+      router.push(`/services?search=${encodeURIComponent(searchQuery)}`);
+    } else {
+      router.push('/services');
     }
-  }
+  };
 
   const handlePopularServiceClick = (service: string) => {
-    router.push(`/search?q=${encodeURIComponent(service)}`)
-  }
+    router.push(`/services?search=${encodeURIComponent(service)}`);
+  };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-chazon-primary/10 via-white to-chazon-blue/10">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-chazon-primary/5 to-transparent skew-x-12 transform origin-top" />
-      <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-gradient-to-r from-chazon-blue/5 to-transparent -skew-x-12 transform origin-bottom" />
-      
+    <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 -right-20 w-[500px] h-[500px] bg-chazon-primary/5 rounded-full blur-3xl animate-float" />
+        <div
+          className="absolute bottom-20 -left-20 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl animate-float"
+          style={{ animationDelay: '1s' }}
+        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl" />
+      </div>
+
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 w-full">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center"
+        >
           {/* Left Content */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+          <motion.div
+            variants={itemVariants}
             className="text-center lg:text-left"
           >
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-chazon-primary/10 text-chazon-primary font-medium text-sm mb-6"
-            >
-              <Star className="w-4 h-4 fill-current" />
-              <span>Trusted by 10,000+ neighbors</span>
-            </motion.div>
-
-            <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight tracking-tight">
-              Expert help for <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-chazon-primary to-chazon-blue">
-                everyday tasks
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-chazon-primary/10 text-chazon-primary text-sm font-semibold mb-8">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-chazon-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-chazon-primary"></span>
               </span>
+              Available in Kampala &amp; surrounding areas
+            </div>
+
+            {/* Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-6 leading-[1.1] tracking-tight">
+              Expert help for{' '}
+              <span className="gradient-text">everyday tasks</span>
             </h1>
-            
-            <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Connect with skilled Stewards in your neighborhood for cleaning, moving, handyman work, and more. Trusted, vetted, and ready to help.
+
+            {/* Subheadline */}
+            <p className="text-lg lg:text-xl text-gray-600 mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              Connect with trusted local Stewards for cleaning, repairs, moving,
+              and more. Quality service, guaranteed satisfaction.
             </p>
 
             {/* Search Form */}
-            <div className="relative max-w-xl mx-auto lg:mx-0 mb-10 group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-chazon-primary to-chazon-blue rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-              <form onSubmit={handleSearch} className="relative flex p-2 bg-white rounded-xl shadow-xl ring-1 ring-gray-900/5">
+            <form
+              onSubmit={handleSearch}
+              className="relative max-w-xl mx-auto lg:mx-0 mb-10"
+            >
+              <div className="relative flex items-center bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-2 focus-within:ring-2 focus-within:ring-chazon-primary/20 transition-all">
                 <div className="flex-1 flex items-center pl-4">
-                  <Search className="w-5 h-5 text-gray-400 mr-3" />
+                  <Search className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
                   <Input
                     type="text"
                     placeholder="What do you need help with?"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-0 shadow-none focus-visible:ring-0 text-lg placeholder:text-gray-400 h-12"
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="border-0 shadow-none focus-visible:ring-0 text-base placeholder:text-gray-400 h-12 bg-transparent"
                   />
                 </div>
                 <Button
                   type="submit"
                   size="lg"
-                  className="bg-chazon-primary hover:bg-chazon-primary-dark text-white rounded-lg px-8 h-12 text-base font-semibold shadow-md transition-all duration-200"
+                  className="h-12 px-6 shadow-lg shadow-chazon-primary/25"
                 >
                   Search
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </form>
-            </div>
+              </div>
+            </form>
 
             {/* Popular Services */}
-            <div>
-              <p className="text-gray-500 text-sm font-medium mb-4 uppercase tracking-wider">Popular Services</p>
-              <div className="flex flex-wrap justify-center lg:justify-start gap-3">
-                {popularServices.map((service, index) => (
-                  <motion.button
+            <div className="mb-10">
+              <p className="text-sm text-gray-500 font-medium mb-4">Popular:</p>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+                {popularServices.map(service => (
+                  <button
                     key={service}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1 }}
                     onClick={() => handlePopularServiceClick(service)}
-                    className="px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:border-chazon-primary hover:text-chazon-primary transition-colors shadow-sm hover:shadow-md"
+                    className="px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:border-chazon-primary hover:text-chazon-primary hover:bg-chazon-primary/5 transition-all"
                   >
                     {service}
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             </div>
-            
+
             {/* Trust Indicators */}
-            <div className="mt-12 flex items-center justify-center lg:justify-start gap-8 text-gray-500 text-sm font-medium">
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-chazon-primary" />
-                <span>Vetted Stewards</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-chazon-primary" />
-                <span>Same-day Service</span>
-              </div>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-gray-500 text-sm">
+              {trustFeatures.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-green-50">
+                    <feature.icon className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="font-medium">{feature.text}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
 
-          {/* Right Image */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
+          {/* Right Visual */}
+          <motion.div
+            variants={itemVariants}
             className="relative hidden lg:block"
           >
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
-              <Image
-                src="https://www.cdc.gov/natural-disasters/media/images/cleaningsuppliesinbucket.jpg"
-                alt="Professional Steward helping"
-                width={800}
-                height={900}
-                className="object-cover w-full h-[600px]"
-                priority
-                unoptimized
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              
-              {/* Floating Card 1 */}
-              <motion.div 
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="absolute bottom-10 left-10 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-lg max-w-xs"
+            <div className="relative">
+              {/* Main Image Card */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-gray-300/50">
+                <img
+                  src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=80"
+                  alt="Professional cleaning service"
+                  className="w-full h-[500px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent" />
+              </div>
+
+              {/* Stats Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-5 border border-gray-100"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-green-600" />
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-chazon-primary to-chazon-primary-dark flex items-center justify-center">
+                    <span className="text-2xl font-bold text-white">4.9</span>
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">100% Secure</p>
-                    <p className="text-xs text-gray-500">Protected payments & insurance</p>
+                    <div className="flex items-center gap-1 mb-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <svg
+                          key={star}
+                          className="w-4 h-4 text-yellow-400 fill-current"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-500">from 2,000+ reviews</p>
                   </div>
                 </div>
               </motion.div>
 
-              {/* Floating Card 2 */}
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="absolute top-10 right-10 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-lg"
+              {/* Active Stewards Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-4 border border-gray-100"
               >
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {[1,2,3].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white overflow-hidden">
-                        <Image 
-                          src={`https://randomuser.me/api/portraits/men/${i+20}.jpg`} 
-                          alt="User" 
-                          width={32} 
-                          height={32} 
-                        />
-                      </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-3">
+                    {[1, 2, 3, 4].map(i => (
+                      <img
+                        key={i}
+                        src={`https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i + 20}.jpg`}
+                        alt="Active steward"
+                        className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                      />
                     ))}
                   </div>
-                  <div className="text-xs font-bold text-gray-900 pl-2">
-                    500+ Stewards <br/> active now
+                  <div>
+                    <p className="font-bold text-gray-900">500+</p>
+                    <p className="text-xs text-gray-500">Active Stewards</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Task Completed Card */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.9 }}
+                className="absolute bottom-20 -right-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-4 text-white"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">10K+</p>
+                    <p className="text-xs text-white/80">Tasks Completed</p>
                   </div>
                 </div>
               </motion.div>
             </div>
           </motion.div>
+        </motion.div>
 
-        </div>
+        {/* Bottom CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-16 text-center"
+        >
+          <p className="text-gray-500 text-sm mb-4">
+            Looking to earn? Become a Steward today.
+          </p>
+          <Link href="/become-steward">
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-2 font-semibold"
+            >
+              Join as a Steward
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </motion.div>
       </div>
     </section>
-  )
+  );
 }
