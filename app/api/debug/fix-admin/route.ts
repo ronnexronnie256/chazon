@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/supabase/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function POST() {
+export async function GET() {
   try {
     const user = await getUser();
 
